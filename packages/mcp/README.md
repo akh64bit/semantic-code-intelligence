@@ -678,7 +678,6 @@ This package is part of the Claude Context monorepo. Please see:
 ## Related Projects
 
 - **[@zilliz/claude-context-core](../core)** - Core indexing engine used by this MCP server
-- **[VSCode Extension](../vscode-extension)** - Alternative VSCode integration
 - [Model Context Protocol](https://modelcontextprotocol.io/) - Official MCP documentation
 
 ## License

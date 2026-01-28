@@ -21,18 +21,6 @@
         "duration": 9782,
         "command": "pnpm build:mcp",
         "description": "Build MCP package"
-      },
-      {
-        "success": true,
-        "duration": 6821,
-        "command": "pnpm build:vscode",
-        "description": "Build VSCode extension"
-      },
-      {
-        "success": true,
-        "duration": 14526,
-        "command": "pnpm -r --filter=\"./packages/chrome-extension\" build",
-        "description": "Build Chrome extension"
       }
     ]
   }

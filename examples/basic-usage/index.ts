@@ -1,4 +1,4 @@
-import { Context, MilvusVectorDatabase, MilvusRestfulVectorDatabase, AstCodeSplitter, LangChainCodeSplitter } from '@zilliz/claude-context-core';
+import { Context, MilvusVectorDatabase, AstCodeSplitter, LangChainCodeSplitter } from '@zilliz/claude-context-core';
 import { envManager } from '@zilliz/claude-context-core';
 import * as path from 'path';
 
@@ -14,31 +14,17 @@ async function main() {
     console.log('===============================');
 
     try {
-        // 1. Choose Vector Database implementation
-        // Set to true to use RESTful API (for environments without gRPC support)
-        // Set to false to use gRPC (default, more efficient)
-        const useRestfulApi = false;
+        // 1. Initialize Vector Database
         const milvusAddress = envManager.get('MILVUS_ADDRESS') || 'localhost:19530';
         const milvusToken = envManager.get('MILVUS_TOKEN');
         const splitterType = envManager.get('SPLITTER_TYPE')?.toLowerCase() || 'ast';
 
-        console.log(`🔧 Using ${useRestfulApi ? 'RESTful API' : 'gRPC'} implementation`);
         console.log(`🔌 Connecting to Milvus at: ${milvusAddress}`);
 
-        let vectorDatabase;
-        if (useRestfulApi) {
-            // Use RESTful implementation (for environments without gRPC support)
-            vectorDatabase = new MilvusRestfulVectorDatabase({
-                address: milvusAddress,
-                ...(milvusToken && { token: milvusToken })
-            });
-        } else {
-            // Use gRPC implementation (default, more efficient)
-            vectorDatabase = new MilvusVectorDatabase({
-                address: milvusAddress,
-                ...(milvusToken && { token: milvusToken })
-            });
-        }
+        const vectorDatabase = new MilvusVectorDatabase({
+            address: milvusAddress,
+            ...(milvusToken && { token: milvusToken })
+        });
 
         // 2. Create Context instance
         let codeSplitter;
@@ -111,8 +97,6 @@ async function main() {
                 console.log('\n💡 Please make sure Milvus service is running');
                 console.log('   - Default address: localhost:19530');
                 console.log('   - Can be modified via MILVUS_ADDRESS environment variable');
-                console.log('   - For RESTful API: set MILVUS_USE_RESTFUL=true');
-                console.log('   - For gRPC (default): set MILVUS_USE_RESTFUL=false or leave unset');
                 console.log('   - Start Milvus: docker run -p 19530:19530 milvusdb/milvus:latest');
             }
 

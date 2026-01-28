@@ -5,7 +5,6 @@
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js-20%2B-green.svg)](https://nodejs.org/)
 [![Documentation](https://img.shields.io/badge/Documentation-📚-orange.svg)](docs/)
-[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/zilliz.semanticcodesearch?label=VS%20Code%20Extension&logo=visual-studio-code)](https://marketplace.visualstudio.com/items?itemName=zilliz.semanticcodesearch)
 [![npm - core](https://img.shields.io/npm/v/@zilliz/claude-context-core?label=%40zilliz%2Fclaude-context-core&logo=npm)](https://www.npmjs.com/package/@zilliz/claude-context-core)
 [![npm - mcp](https://img.shields.io/npm/v/@zilliz/claude-context-mcp?label=%40zilliz%2Fclaude-context-mcp&logo=npm)](https://www.npmjs.com/package/@zilliz/claude-context-mcp)
 [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/zilliz_universe.svg?style=social&label=Follow%20%40Zilliz)](https://twitter.com/zilliz_universe)
@@ -535,10 +534,9 @@ For detailed evaluation methodology and results, see the [evaluation directory](
 
 ### Core Components
 
-Claude Context is a monorepo containing three main packages:
+Claude Context is a monorepo containing two main packages:
 
 - **`@zilliz/claude-context-core`**: Core indexing engine with embedding and vector database integration
-- **VSCode Extension**: Semantic Code Search extension for Visual Studio Code
 - **`@zilliz/claude-context-mcp`**: Model Context Protocol server for AI agent integration
 
 ### Supported Technologies
@@ -547,13 +545,13 @@ Claude Context is a monorepo containing three main packages:
 - **Vector Databases**: [Milvus](https://milvus.io) or [Zilliz Cloud](https://zilliz.com/cloud)(fully managed vector database as a service)
 - **Code Splitters**: AST-based splitter (with automatic fallback), LangChain character-based splitter
 - **Languages**: TypeScript, JavaScript, Python, Java, C++, C#, Go, Rust, PHP, Ruby, Swift, Kotlin, Scala, Markdown
-- **Development Tools**: VSCode, Model Context Protocol
+- **Development Tools**: Model Context Protocol
 
 ---
 
-## 📦 Other Ways to Use Claude Context
+## 📦 direct use of Claude Context
 
-While MCP is the recommended way to use Claude Context with AI assistants, you can also use it directly or through the VSCode extension.
+While MCP is the recommended way to use Claude Context with AI assistants, you can also use it directly.
 
 ### Build Applications with Core Package
 
@@ -595,17 +593,6 @@ results.forEach(result => {
 });
 ```
 
-### VSCode Extension
-
-Integrates Claude Context directly into your IDE. Provides an intuitive interface for semantic code search and navigation.
-
-1. **Direct Link**: [Install from VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=zilliz.semanticcodesearch)
-2. **Manual Search**:
-    - Open Extensions view in VSCode (Ctrl+Shift+X or Cmd+Shift+X on Mac)
-    - Search for "Semantic Code Search"
-    - Click Install
-
-![img](https://lh7-rt.googleusercontent.com/docsz/AD_4nXdtCtT9Qi6o5mGVoxzX50r8Nb6zDFcjvTQR7WZ-xMbEsHEPPhSYAFVJ7q4-rETzxJ8wy1cyZmU8CmtpNhAU8PGOqVnE2kc2HCn1etDg97Qsh7m89kBjG4ZT7XBgO4Dp7BfFZx7eow?key=qYdFquJrLcfXCUndY-YRBQ)
 ---
 
 ## 🛠️ Development
@@ -668,7 +655,6 @@ pnpm build
 
 # Build specific package
 pnpm build:core
-pnpm build:vscode
 pnpm build:mcp
 
 # Performance benchmarking
@@ -724,7 +710,6 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 - [Core Package Contributing](packages/core/CONTRIBUTING.md)
 - [MCP Server Contributing](packages/mcp/CONTRIBUTING.md)  
-- [VSCode Extension Contributing](packages/vscode-extension/CONTRIBUTING.md)
 
 ---
 
@@ -735,7 +720,6 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 - [ ] Agent-based interactive search mode
 - [x] Enhanced code chunking strategies
 - [ ] Search result ranking optimization
-- [ ] Robust Chrome Extension
 
 ---
 
@@ -748,6 +732,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🔗 Links
 
 - [GitHub Repository](https://github.com/zilliztech/claude-context)
-- [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=zilliz.semanticcodesearch)
 - [Milvus Documentation](https://milvus.io/docs)
 - [Zilliz Cloud](https://zilliz.com/cloud)
