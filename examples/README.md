@@ -1,3 +1,3 @@
-# Claude Context Examples
+# Gemini Context Examples
 
-This directory contains usage examples for Claude Context.
+This directory contains usage examples for Gemini Context.

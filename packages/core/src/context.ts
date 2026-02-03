@@ -6,7 +6,7 @@ import {
 import {
     Embedding,
     EmbeddingVector,
-    OpenAIEmbedding
+    GeminiEmbedding
 } from './embedding';
 import {
     VectorDatabase,
@@ -106,10 +106,10 @@ export class Context {
 
     constructor(config: ContextConfig = {}) {
         // Initialize services
-        this.embedding = config.embedding || new OpenAIEmbedding({
-            apiKey: envManager.get('OPENAI_API_KEY') || 'your-openai-api-key',
-            model: 'text-embedding-3-small',
-            ...(envManager.get('OPENAI_BASE_URL') && { baseURL: envManager.get('OPENAI_BASE_URL') })
+        this.embedding = config.embedding || new GeminiEmbedding({
+            apiKey: envManager.get('GEMINI_API_KEY') || 'your-gemini-api-key',
+            model: 'gemini-embedding-001',
+            ...(envManager.get('GEMINI_BASE_URL') && { baseURL: envManager.get('GEMINI_BASE_URL') })
         });
 
         if (!config.vectorDatabase) {

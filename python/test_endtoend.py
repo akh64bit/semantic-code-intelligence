@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Claude Context End-to-End Test
-Use TypeScriptExecutor to call complete Claude Context workflow
+Gemini Context End-to-End Test
+Use TypeScriptExecutor to call complete Gemini Context workflow
 """
 
 import os
@@ -15,7 +15,7 @@ from ts_executor import TypeScriptExecutor
 
 
 def run_context_endtoend_test():
-    """Run Claude Context end-to-end test"""
+    """Run Gemini Context end-to-end test"""
 
     # Configuration parameters
     config = {
@@ -27,7 +27,7 @@ def run_context_endtoend_test():
         "searchQuery": "embedding creation and vector database configuration",
     }
 
-    print("🚀 Starting Claude Context end-to-end test")
+    print("🚀 Starting Gemini Context end-to-end test")
     print(f"📊 Configuration:")
     print(f"   - Codebase path: {config['codebasePath']}")
     print(f"   - Vector database: {config['milvusAddress']}")
@@ -104,7 +104,7 @@ def run_context_endtoend_test():
 def main():
     """Main function"""
     print("=" * 60)
-    print("🧪 Claude Context End-to-End Test")
+    print("🧪 Gemini Context End-to-End Test")
     print("=" * 60)
     print()
 
@@ -113,10 +113,10 @@ def main():
     print()
     print("=" * 60)
     if success:
-        print("🎉 Test completed! Claude Context end-to-end workflow runs successfully!")
+        print("🎉 Test completed! Gemini Context end-to-end workflow runs successfully!")
         print()
         print("💡 This proves:")
-        print("   ✅ Can call TypeScript Claude Context from Python")
+        print("   ✅ Can call TypeScript Gemini Context from Python")
         print("   ✅ Supports complete indexing and search workflow")
         print("   ✅ Supports complex configuration and parameter passing")
         print("   ✅ Can get detailed execution results and statistics")

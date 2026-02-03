@@ -1,5 +1,5 @@
-import { Context, MilvusVectorDatabase, AstCodeSplitter, LangChainCodeSplitter } from '@zilliz/claude-context-core';
-import { envManager } from '@zilliz/claude-context-core';
+import { Context, MilvusVectorDatabase, AstCodeSplitter, GeminiEmbedding } from '@zilliz/gemini-context-core';
+import { envManager } from '@zilliz/gemini-context-core';
 import * as path from 'path';
 
 // Try to load .env file
@@ -10,14 +10,13 @@ try {
 }
 
 async function main() {
-    console.log('🚀 Context Real Usage Example');
+    console.log('🚀 Gemini Context Real Usage Example');
     console.log('===============================');
 
     try {
         // 1. Initialize Vector Database
         const milvusAddress = envManager.get('MILVUS_ADDRESS') || 'localhost:19530';
         const milvusToken = envManager.get('MILVUS_TOKEN');
-        const splitterType = envManager.get('SPLITTER_TYPE')?.toLowerCase() || 'ast';
 
         console.log(`🔌 Connecting to Milvus at: ${milvusAddress}`);
 
@@ -27,12 +26,8 @@ async function main() {
         });
 
         // 2. Create Context instance
-        let codeSplitter;
-        if (splitterType === 'langchain') {
-            codeSplitter = new LangChainCodeSplitter(1000, 200);
-        } else {
-            codeSplitter = new AstCodeSplitter(2500, 300);
-        }
+        const codeSplitter = new AstCodeSplitter(2500, 300);
+
         const context = new Context({
             vectorDatabase,
             codeSplitter,
@@ -91,8 +86,8 @@ async function main() {
         // Provide detailed error diagnostics
         if (error instanceof Error) {
             if (error.message.includes('API key')) {
-                console.log('\n💡 Please make sure to set the correct OPENAI_API_KEY environment variable');
-                console.log('   Example: export OPENAI_API_KEY="your-actual-api-key"');
+                console.log('\n💡 Please make sure to set the correct GEMINI_API_KEY environment variable');
+                console.log('   Example: export GEMINI_API_KEY="your-actual-api-key"');
             } else if (error.message.includes('Milvus') || error.message.includes('connect')) {
                 console.log('\n💡 Please make sure Milvus service is running');
                 console.log('   - Default address: localhost:19530');
@@ -101,11 +96,10 @@ async function main() {
             }
 
             console.log('\n💡 Environment Variables:');
-            console.log('   - OPENAI_API_KEY: Your OpenAI API key (required)');
-            console.log('   - OPENAI_BASE_URL: Custom OpenAI API endpoint (optional)');
+            console.log('   - GEMINI_API_KEY: Your Google AI API key (required)');
+            console.log('   - GEMINI_BASE_URL: Custom Gemini API endpoint (optional)');
             console.log('   - MILVUS_ADDRESS: Milvus server address (default: localhost:19530)');
             console.log('   - MILVUS_TOKEN: Milvus authentication token (optional)');
-            console.log('   - SPLITTER_TYPE: Code splitter type - "ast" or "langchain" (default: ast)');
         }
 
         process.exit(1);

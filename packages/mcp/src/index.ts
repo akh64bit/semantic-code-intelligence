@@ -21,8 +21,8 @@ import {
     ListToolsRequestSchema,
     CallToolRequestSchema
 } from "@modelcontextprotocol/sdk/types.js";
-import { Context } from "@zilliz/claude-context-core";
-import { MilvusVectorDatabase } from "@zilliz/claude-context-core";
+import { Context } from "@zilliz/gemini-context-core";
+import { MilvusVectorDatabase } from "@zilliz/gemini-context-core";
 
 // Import our modular components
 import { createMcpConfig, logConfigurationSummary, showHelpMessage, ContextMcpConfig } from "./config.js";
@@ -53,19 +53,24 @@ class ContextMcpServer {
         );
 
         // Initialize embedding provider
-        console.log(`[EMBEDDING] Initializing embedding provider: ${config.embeddingProvider}`);
+        console.log(`[EMBEDDING] Initializing Gemini embedding provider`);
         console.log(`[EMBEDDING] Using model: ${config.embeddingModel}`);
 
         const embedding = createEmbeddingInstance(config);
         logEmbeddingProviderInfo(config, embedding);
 
         // Initialize vector database
+        if (!config.milvusAddress && !config.milvusToken) {
+            console.warn('[MCP] ⚠️ No Milvus configuration found (MILVUS_ADDRESS or MILVUS_TOKEN).');
+            console.warn('[MCP] ⚠️ Defaulting to local Milvus at localhost:19530.');
+        }
+
         const vectorDatabase = new MilvusVectorDatabase({
             address: config.milvusAddress,
             ...(config.milvusToken && { token: config.milvusToken })
         });
 
-        // Initialize Claude Context
+        // Initialize Gemini Context
         this.context = new Context({
             embedding,
             vectorDatabase

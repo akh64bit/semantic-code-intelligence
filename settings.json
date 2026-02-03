@@ -1,0 +1,22 @@
+{
+  "security": {
+    "auth": {
+      "selectedType": "gemini-api-key"
+    }
+  },
+  "general": {
+    "previewFeatures": true
+  },
+  "mcpServers": {
+    "gemini-context": {
+      "command": "node",
+      "args": [
+        "/usr/local/google/home/akkr/Documents/code-intelligence/claude-context/packages/mcp/dist/index.js"
+      ],
+      "env": {
+        "OPENAI_API_KEY": "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",
+        "MILVUS_ADDRESS": "127.0.0.1:19530"
+      }
+    }
+  }
+}

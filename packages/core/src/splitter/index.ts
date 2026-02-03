@@ -11,7 +11,6 @@ export interface CodeChunk {
 
 // Splitter type enumeration
 export enum SplitterType {
-    LANGCHAIN = 'langchain',
     AST = 'ast'
 }
 
@@ -46,5 +45,4 @@ export interface Splitter {
 }
 
 // Implementation class exports
-export * from './langchain-splitter';
 export * from './ast-splitter';

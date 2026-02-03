@@ -29,24 +29,19 @@ export class AstCodeSplitter implements Splitter {
     private chunkSize: number = 2500;
     private chunkOverlap: number = 300;
     private parser: Parser;
-    private langchainFallback: any; // LangChainCodeSplitter for fallback
 
     constructor(chunkSize?: number, chunkOverlap?: number) {
         if (chunkSize) this.chunkSize = chunkSize;
         if (chunkOverlap) this.chunkOverlap = chunkOverlap;
         this.parser = new Parser();
-
-        // Initialize fallback splitter
-        const { LangChainCodeSplitter } = require('./langchain-splitter');
-        this.langchainFallback = new LangChainCodeSplitter(chunkSize, chunkOverlap);
     }
 
     async split(code: string, language: string, filePath?: string): Promise<CodeChunk[]> {
         // Check if language is supported by AST splitter
         const langConfig = this.getLanguageConfig(language);
         if (!langConfig) {
-            console.log(`📝 Language ${language} not supported by AST, using LangChain splitter for: ${filePath || 'unknown'}`);
-            return await this.langchainFallback.split(code, language, filePath);
+            console.log(`📝 Language ${language} not supported by AST, using simple line-based splitter for: ${filePath || 'unknown'}`);
+            return await this.simpleLineSplit(code, language, filePath);
         }
 
         try {
@@ -56,8 +51,8 @@ export class AstCodeSplitter implements Splitter {
             const tree = this.parser.parse(code);
 
             if (!tree.rootNode) {
-                console.warn(`[ASTSplitter] ⚠️  Failed to parse AST for ${language}, falling back to LangChain: ${filePath || 'unknown'}`);
-                return await this.langchainFallback.split(code, language, filePath);
+                console.warn(`[ASTSplitter] ⚠️  Failed to parse AST for ${language}, falling back to simple line-based splitter: ${filePath || 'unknown'}`);
+                return await this.simpleLineSplit(code, language, filePath);
             }
 
             // Extract chunks based on AST nodes
@@ -68,19 +63,74 @@ export class AstCodeSplitter implements Splitter {
 
             return refinedChunks;
         } catch (error) {
-            console.warn(`[ASTSplitter] ⚠️  AST splitter failed for ${language}, falling back to LangChain: ${error}`);
-            return await this.langchainFallback.split(code, language, filePath);
+            console.warn(`[ASTSplitter] ⚠️  AST splitter failed for ${language}, falling back to simple line-based splitter: ${error}`);
+            return await this.simpleLineSplit(code, language, filePath);
         }
     }
 
     setChunkSize(chunkSize: number): void {
         this.chunkSize = chunkSize;
-        this.langchainFallback.setChunkSize(chunkSize);
     }
 
     setChunkOverlap(chunkOverlap: number): void {
         this.chunkOverlap = chunkOverlap;
-        this.langchainFallback.setChunkOverlap(chunkOverlap);
+    }
+
+    private async simpleLineSplit(code: string, language: string, filePath?: string): Promise<CodeChunk[]> {
+        const lines = code.split('\n');
+        const chunks: CodeChunk[] = [];
+        let currentChunkLines: string[] = [];
+        let currentChunkSize = 0;
+        let startLine = 1;
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const lineSize = line.length + 1; // +1 for newline
+
+            if (currentChunkSize + lineSize > this.chunkSize && currentChunkLines.length > 0) {
+                // Save current chunk
+                chunks.push({
+                    content: currentChunkLines.join('\n'),
+                    metadata: {
+                        startLine,
+                        endLine: i,
+                        language,
+                        filePath
+                    }
+                });
+
+                // Handle overlap - take last few lines
+                const overlapLines: string[] = [];
+                let overlapSize = 0;
+                for (let j = currentChunkLines.length - 1; j >= 0; j--) {
+                    const l = currentChunkLines[j];
+                    if (overlapSize + l.length + 1 > this.chunkOverlap) break;
+                    overlapLines.unshift(l);
+                    overlapSize += l.length + 1;
+                }
+
+                currentChunkLines = [...overlapLines, line];
+                currentChunkSize = overlapSize + lineSize;
+                startLine = i + 1 - overlapLines.length;
+            } else {
+                currentChunkLines.push(line);
+                currentChunkSize += lineSize;
+            }
+        }
+
+        if (currentChunkLines.length > 0) {
+            chunks.push({
+                content: currentChunkLines.join('\n'),
+                metadata: {
+                    startLine,
+                    endLine: lines.length,
+                    language,
+                    filePath
+                }
+            });
+        }
+
+        return chunks;
     }
 
     private getLanguageConfig(language: string): { parser: any; nodeTypes: string[] } | null {

@@ -24,6 +24,7 @@ export class MilvusVectorDatabase implements VectorDatabase {
     protected config: MilvusConfig;
     private client: MilvusClient | null = null;
     protected initializationPromise: Promise<void>;
+    private initError: Error | null = null;
 
     constructor(config: MilvusConfig) {
         this.config = config;
@@ -33,8 +34,15 @@ export class MilvusVectorDatabase implements VectorDatabase {
     }
 
     private async initialize(): Promise<void> {
-        const resolvedAddress = await this.resolveAddress();
-        await this.initializeClient(resolvedAddress);
+        try {
+            const resolvedAddress = await this.resolveAddress();
+            await this.initializeClient(resolvedAddress);
+        } catch (error: any) {
+            this.initError = error;
+            console.error(`[MilvusDB] ❌ Failed to initialize Milvus: ${error.message}`);
+            // We don't rethrow here to prevent crashing the server on startup.
+            // Subsequent calls to ensureInitialized() will throw if initialization failed.
+        }
     }
 
     private async initializeClient(address: string): Promise<void> {
@@ -62,7 +70,8 @@ export class MilvusVectorDatabase implements VectorDatabase {
         }
 
         if (!finalConfig.address) {
-            throw new Error('Address is required and could not be resolved from token');
+            console.log('[MilvusDB] ⚠️ No Milvus address or token provided. Defaulting to localhost:19530 for local development.');
+            return 'localhost:19530';
         }
 
         return finalConfig.address;
@@ -73,8 +82,13 @@ export class MilvusVectorDatabase implements VectorDatabase {
      */
     protected async ensureInitialized(): Promise<void> {
         await this.initializationPromise;
+
+        if (this.initError) {
+            throw new Error(`Vector database initialization failed: ${this.initError.message}. Please check your MILVUS_ADDRESS or MILVUS_TOKEN configuration.`);
+        }
+
         if (!this.client) {
-            throw new Error('Client not initialized');
+            throw new Error('Milvus client is not initialized.');
         }
     }
 
@@ -269,7 +283,7 @@ export class MilvusVectorDatabase implements VectorDatabase {
 
         const createCollectionParams = {
             collection_name: collectionName,
-            description: description || `Claude Context collection: ${collectionName}`,
+            description: description || `Gemini Context collection: ${collectionName}`,
             fields: schema,
         };
 
