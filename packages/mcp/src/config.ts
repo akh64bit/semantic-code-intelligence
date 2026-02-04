@@ -39,6 +39,19 @@ export interface CodebaseInfoIndexed extends CodebaseInfoBase {
     indexedFiles: number;        // Number of files indexed
     totalChunks: number;         // Total number of chunks generated
     indexStatus: 'completed' | 'limit_reached';  // Status from indexing result
+    // Enhanced metrics
+    performance?: {
+        totalElapsedTimeMs: number;
+    };
+    metadata?: {
+        languageBreakdown: Record<string, number>;
+        totalCharacters: number;
+        totalTokens: number;
+        chunkingTelemetry: {
+            averageChunkSize: number;
+            chunkSizeDistribution: Record<string, number>;
+        };
+    };
 }
 
 // Index failed state - when indexing failed
