@@ -1,4 +1,6 @@
 import { envManager } from "@zilliz/gemini-context-core";
+import * as path from "path";
+import * as os from "os";
 
 export interface ContextMcpConfig {
     name: string;
@@ -8,8 +10,7 @@ export interface ContextMcpConfig {
     geminiApiKey?: string;
     geminiBaseUrl?: string;
     // Vector database configuration
-    milvusAddress?: string; // Optional, can be auto-resolved from token
-    milvusToken?: string;
+    lancedbUri?: string;
 }
 
 // Legacy format (v1) - for backward compatibility
@@ -71,12 +72,26 @@ export function getEmbeddingModel(): string {
     return selectedModel;
 }
 
+// Helper function to resolve LanceDB URI and expand ~
+function resolveLancedbUri(): string {
+    let uri = envManager.get('LANCEDB_URI');
+    if (!uri) {
+        return path.join(os.homedir(), '.gemini-context', 'lancedb');
+    }
+
+    if (uri.startsWith('~')) {
+        return path.join(os.homedir(), uri.slice(1));
+    }
+
+    return path.resolve(uri);
+}
+
 export function createMcpConfig(): ContextMcpConfig {
     // Debug: Print environment variables related to Context
     console.log(`[DEBUG] 🔍 Environment Variables Debug:`);
     console.log(`[DEBUG]   EMBEDDING_MODEL: ${envManager.get('EMBEDDING_MODEL') || 'NOT SET'}`);
     console.log(`[DEBUG]   GEMINI_API_KEY: ${envManager.get('GEMINI_API_KEY') ? 'SET (length: ' + envManager.get('GEMINI_API_KEY')!.length + ')' : 'NOT SET'}`);
-    console.log(`[DEBUG]   MILVUS_ADDRESS: ${envManager.get('MILVUS_ADDRESS') || 'NOT SET'}`);
+    console.log(`[DEBUG]   LANCEDB_URI: ${envManager.get('LANCEDB_URI') || 'NOT SET'}`);
     console.log(`[DEBUG]   NODE_ENV: ${envManager.get('NODE_ENV') || 'NOT SET'}`);
 
     const config: ContextMcpConfig = {
@@ -85,9 +100,8 @@ export function createMcpConfig(): ContextMcpConfig {
         embeddingModel: getEmbeddingModel(),
         geminiApiKey: envManager.get('GEMINI_API_KEY'),
         geminiBaseUrl: envManager.get('GEMINI_BASE_URL'),
-        // Vector database configuration - address can be auto-resolved from token
-        milvusAddress: envManager.get('MILVUS_ADDRESS'), // Optional, can be resolved from token
-        milvusToken: envManager.get('MILVUS_TOKEN')
+        // Vector database configuration
+        lancedbUri: resolveLancedbUri()
     };
 
     return config;
@@ -99,7 +113,7 @@ export function logConfigurationSummary(config: ContextMcpConfig): void {
     console.log(`[MCP] Configuration Summary:`);
     console.log(`[MCP]   Server: ${config.name} v${config.version}`);
     console.log(`[MCP]   Embedding Model: ${config.embeddingModel}`);
-    console.log(`[MCP]   Milvus Address: ${config.milvusAddress || (config.milvusToken ? '[Auto-resolve from token]' : '[Not configured]')}`);
+    console.log(`[MCP]   LanceDB URI: ${config.lancedbUri}`);
 
     // Log Gemini configuration without exposing sensitive data
     console.log(`[MCP]   Gemini API Key: ${config.geminiApiKey ? '✅ Configured' : '❌ Missing'}`);
@@ -131,14 +145,13 @@ Environment Variables:
   GEMINI_BASE_URL         Gemini API base URL (optional, for custom endpoints)
   
   Vector Database Configuration:
-  MILVUS_ADDRESS          Milvus address (optional, can be auto-resolved from token)
-  MILVUS_TOKEN            Milvus token (optional, used for authentication and address resolution)
+  LANCEDB_URI             LanceDB storage URI (default: ~/.gemini-context/lancedb)
 
 Examples:
-  # Start MCP server with Gemini and explicit Milvus address
-  GEMINI_API_KEY=xxx MILVUS_ADDRESS=localhost:19530 npx @zilliz/gemini-context-mcp@latest
+  # Start MCP server with Gemini and default LanceDB storage
+  GEMINI_API_KEY=xxx npx @zilliz/gemini-context-mcp@latest
   
-  # Start MCP server with Gemini and specific model
-  GEMINI_API_KEY=xxx EMBEDDING_MODEL=gemini-embedding-001 MILVUS_TOKEN=your-token npx @zilliz/gemini-context-mcp@latest
+  # Start MCP server with Gemini and specific LanceDB URI
+  GEMINI_API_KEY=xxx LANCEDB_URI=/tmp/lancedb npx @zilliz/gemini-context-mcp@latest
         `);
 } 

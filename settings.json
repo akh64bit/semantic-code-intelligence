@@ -15,7 +15,7 @@
       ],
       "env": {
         "OPENAI_API_KEY": "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",
-        "MILVUS_ADDRESS": "127.0.0.1:19530"
+        "LANCEDB_URI": "~/.gemini-context/lancedb"
       }
     }
   }

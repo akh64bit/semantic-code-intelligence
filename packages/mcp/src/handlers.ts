@@ -19,55 +19,55 @@ export class ToolHandlers {
     }
 
     /**
-     * Sync indexed codebases from Zilliz Cloud collections
-     * This method fetches all collections from the vector database,
-     * gets the first document from each collection to extract codebasePath from metadata,
+     * Sync indexed codebases from LanceDB tables
+     * This method fetches all tables from the vector database,
+     * gets the first document from each table to extract codebasePath from metadata,
      * and updates the snapshot with discovered codebases.
      * 
-     * Logic: Compare mcp-codebase-snapshot.json with zilliz cloud collections
-     * - If local snapshot has extra directories (not in cloud), remove them
-     * - If local snapshot is missing directories (exist in cloud), ignore them
+     * Logic: Compare mcp-codebase-snapshot.json with LanceDB tables
+     * - If local snapshot has extra directories (not in database), remove them
+     * - If local snapshot is missing directories (exist in database), ignore them
      */
-    private async syncIndexedCodebasesFromCloud(): Promise<void> {
+    private async syncIndexedCodebases(): Promise<void> {
         try {
-            console.log(`[SYNC-CLOUD] 🔄 Syncing indexed codebases from Zilliz Cloud...`);
+            console.log(`[SYNC] 🔄 Syncing indexed codebases from LanceDB...`);
 
             // Get all collections using the interface method
             const vectorDb = this.context.getVectorDatabase();
 
-            // Use the new listCollections method from the interface
+            // Use the listCollections method from the interface
             const collections = await vectorDb.listCollections();
 
-            console.log(`[SYNC-CLOUD] 📋 Found ${collections.length} collections in Zilliz Cloud`);
+            console.log(`[SYNC] 📋 Found ${collections.length} tables in LanceDB`);
 
             if (collections.length === 0) {
-                console.log(`[SYNC-CLOUD] ✅ No collections found in cloud`);
-                // If no collections in cloud, remove all local codebases
+                console.log(`[SYNC] ✅ No tables found in database`);
+                // If no collections in database, remove all local codebases
                 const localCodebases = this.snapshotManager.getIndexedCodebases();
                 if (localCodebases.length > 0) {
-                    console.log(`[SYNC-CLOUD] 🧹 Removing ${localCodebases.length} local codebases as cloud has no collections`);
+                    console.log(`[SYNC] 🧹 Removing ${localCodebases.length} local codebases as database has no tables`);
                     for (const codebasePath of localCodebases) {
                         this.snapshotManager.removeIndexedCodebase(codebasePath);
-                        console.log(`[SYNC-CLOUD] ➖ Removed local codebase: ${codebasePath}`);
+                        console.log(`[SYNC] ➖ Removed local codebase: ${codebasePath}`);
                     }
                     this.snapshotManager.saveCodebaseSnapshot();
-                    console.log(`[SYNC-CLOUD] 💾 Updated snapshot to match empty cloud state`);
+                    console.log(`[SYNC] 💾 Updated snapshot to match empty database state`);
                 }
                 return;
             }
 
-            const cloudCodebases = new Set<string>();
+            const dbCodebases = new Set<string>();
 
             // Check each collection for codebase path
             for (const collectionName of collections) {
                 try {
-                    // Skip collections that don't match the code_chunks pattern (support both legacy and new collections)
+                    // Skip collections that don't match the code_chunks pattern
                     if (!collectionName.startsWith('code_chunks_') && !collectionName.startsWith('hybrid_code_chunks_')) {
-                        console.log(`[SYNC-CLOUD] ⏭️  Skipping non-code collection: ${collectionName}`);
+                        console.log(`[SYNC] ⏭️  Skipping non-code table: ${collectionName}`);
                         continue;
                     }
 
-                    console.log(`[SYNC-CLOUD] 🔍 Checking collection: ${collectionName}`);
+                    console.log(`[SYNC] 🔍 Checking table: ${collectionName}`);
 
                     // Query the first document to get metadata
                     const results = await vectorDb.query(
@@ -87,56 +87,56 @@ export class ToolHandlers {
                                 const codebasePath = metadata.codebasePath;
 
                                 if (codebasePath && typeof codebasePath === 'string') {
-                                    console.log(`[SYNC-CLOUD] 📍 Found codebase path: ${codebasePath} in collection: ${collectionName}`);
-                                    cloudCodebases.add(codebasePath);
+                                    console.log(`[SYNC] 📍 Found codebase path: ${codebasePath} in table: ${collectionName}`);
+                                    dbCodebases.add(codebasePath);
                                 } else {
-                                    console.warn(`[SYNC-CLOUD] ⚠️  No codebasePath found in metadata for collection: ${collectionName}`);
+                                    console.warn(`[SYNC] ⚠️  No codebasePath found in metadata for table: ${collectionName}`);
                                 }
                             } catch (parseError) {
-                                console.warn(`[SYNC-CLOUD] ⚠️  Failed to parse metadata JSON for collection ${collectionName}:`, parseError);
+                                console.warn(`[SYNC] ⚠️  Failed to parse metadata JSON for table ${collectionName}:`, parseError);
                             }
                         } else {
-                            console.warn(`[SYNC-CLOUD] ⚠️  No metadata found in collection: ${collectionName}`);
+                            console.warn(`[SYNC] ⚠️  No metadata found in table: ${collectionName}`);
                         }
                     } else {
-                        console.log(`[SYNC-CLOUD] ℹ️  Collection ${collectionName} is empty`);
+                        console.log(`[SYNC] ℹ️  Table ${collectionName} is empty`);
                     }
                 } catch (collectionError: any) {
-                    console.warn(`[SYNC-CLOUD] ⚠️  Error checking collection ${collectionName}:`, collectionError.message || collectionError);
+                    console.warn(`[SYNC] ⚠️  Error checking table ${collectionName}:`, collectionError.message || collectionError);
                     // Continue with next collection
                 }
             }
 
-            console.log(`[SYNC-CLOUD] 📊 Found ${cloudCodebases.size} valid codebases in cloud`);
+            console.log(`[SYNC] 📊 Found ${dbCodebases.size} valid codebases in database`);
 
             // Get current local codebases
             const localCodebases = new Set(this.snapshotManager.getIndexedCodebases());
-            console.log(`[SYNC-CLOUD] 📊 Found ${localCodebases.size} local codebases in snapshot`);
+            console.log(`[SYNC] 📊 Found ${localCodebases.size} local codebases in snapshot`);
 
             let hasChanges = false;
 
-            // Remove local codebases that don't exist in cloud
+            // Remove local codebases that don't exist in database
             for (const localCodebase of localCodebases) {
-                if (!cloudCodebases.has(localCodebase)) {
+                if (!dbCodebases.has(localCodebase)) {
                     this.snapshotManager.removeIndexedCodebase(localCodebase);
                     hasChanges = true;
-                    console.log(`[SYNC-CLOUD] ➖ Removed local codebase (not in cloud): ${localCodebase}`);
+                    console.log(`[SYNC] ➖ Removed local codebase (not in database): ${localCodebase}`);
                 }
             }
 
-            // Note: We don't add cloud codebases that are missing locally (as per user requirement)
-            console.log(`[SYNC-CLOUD] ℹ️  Skipping addition of cloud codebases not present locally (per sync policy)`);
+            // Note: We don't add database codebases that are missing locally
+            console.log(`[SYNC] ℹ️  Skipping addition of database codebases not present locally (per sync policy)`);
 
             if (hasChanges) {
                 this.snapshotManager.saveCodebaseSnapshot();
-                console.log(`[SYNC-CLOUD] 💾 Updated snapshot to match cloud state`);
+                console.log(`[SYNC] 💾 Updated snapshot to match database state`);
             } else {
-                console.log(`[SYNC-CLOUD] ✅ Local snapshot already matches cloud state`);
+                console.log(`[SYNC] ✅ Local snapshot already matches database state`);
             }
 
-            console.log(`[SYNC-CLOUD] ✅ Cloud sync completed successfully`);
+            console.log(`[SYNC] ✅ Database sync completed successfully`);
         } catch (error: any) {
-            console.error(`[SYNC-CLOUD] ❌ Error syncing codebases from cloud:`, error.message || error);
+            console.error(`[SYNC] ❌ Error syncing codebases from database:`, error.message || error);
             // Don't throw - this is not critical for the main functionality
         }
     }
@@ -149,8 +149,8 @@ export class ToolHandlers {
         const customIgnorePatterns = ignorePatterns || [];
 
         try {
-            // Sync indexed codebases from cloud first
-            await this.syncIndexedCodebasesFromCloud();
+            // Sync indexed codebases from database first
+            await this.syncIndexedCodebases();
 
             // Validate splitter parameter
             if (splitterType !== 'ast' && splitterType !== 'langchain') {
@@ -416,8 +416,8 @@ export class ToolHandlers {
         const resultLimit = limit || 10;
 
         try {
-            // Sync indexed codebases from cloud first
-            await this.syncIndexedCodebasesFromCloud();
+            // Sync indexed codebases from database first
+            await this.syncIndexedCodebases();
 
             // Force absolute path resolution - warn if relative path provided
             const absolutePath = ensureAbsolutePath(codebasePath);

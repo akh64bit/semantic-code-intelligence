@@ -22,7 +22,7 @@ import {
     CallToolRequestSchema
 } from "@modelcontextprotocol/sdk/types.js";
 import { Context } from "@zilliz/gemini-context-core";
-import { MilvusVectorDatabase } from "@zilliz/gemini-context-core";
+import { LanceDBVectorDatabase } from "@zilliz/gemini-context-core";
 
 // Import our modular components
 import { createMcpConfig, logConfigurationSummary, showHelpMessage, ContextMcpConfig } from "./config.js";
@@ -60,14 +60,10 @@ class ContextMcpServer {
         logEmbeddingProviderInfo(config, embedding);
 
         // Initialize vector database
-        if (!config.milvusAddress && !config.milvusToken) {
-            console.warn('[MCP] ⚠️ No Milvus configuration found (MILVUS_ADDRESS or MILVUS_TOKEN).');
-            console.warn('[MCP] ⚠️ Defaulting to local Milvus at localhost:19530.');
-        }
+        console.log(`[VDB] Initializing LanceDB at: ${config.lancedbUri}`);
 
-        const vectorDatabase = new MilvusVectorDatabase({
-            address: config.milvusAddress,
-            ...(config.milvusToken && { token: config.milvusToken })
+        const vectorDatabase = new LanceDBVectorDatabase({
+            uri: config.lancedbUri || './.lancedb'
         });
 
         // Initialize Gemini Context

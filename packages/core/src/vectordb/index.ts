@@ -12,14 +12,4 @@ export {
 } from './types';
 
 // Implementation class exports
-export { MilvusVectorDatabase, MilvusConfig } from './milvus-vectordb';
-export {
-    ClusterManager,
-    ZillizConfig,
-    Project,
-    Cluster,
-    CreateFreeClusterRequest,
-    CreateFreeClusterResponse,
-    CreateFreeClusterWithDetailsResponse,
-    DescribeClusterResponse
-} from './zilliz-utils'; 
+export { LanceDBVectorDatabase, LanceDBConfig } from './lancedb-vectordb';

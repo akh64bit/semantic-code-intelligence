@@ -1,4 +1,4 @@
-import { Context, MilvusVectorDatabase, AstCodeSplitter, GeminiEmbedding } from '@zilliz/gemini-context-core';
+import { Context, LanceDBVectorDatabase, AstCodeSplitter, GeminiEmbedding } from '@zilliz/gemini-context-core';
 import { envManager } from '@zilliz/gemini-context-core';
 import * as path from 'path';
 
@@ -10,19 +10,17 @@ try {
 }
 
 async function main() {
-    console.log('🚀 Gemini Context Real Usage Example');
+    console.log('🚀 Gemini Context Real Usage Example (LanceDB)');
     console.log('===============================');
 
     try {
         // 1. Initialize Vector Database
-        const milvusAddress = envManager.get('MILVUS_ADDRESS') || 'localhost:19530';
-        const milvusToken = envManager.get('MILVUS_TOKEN');
+        const lancedbUri = envManager.get('LANCEDB_URI') || './.lancedb';
 
-        console.log(`🔌 Connecting to Milvus at: ${milvusAddress}`);
+        console.log(`🔌 Initializing LanceDB at: ${lancedbUri}`);
 
-        const vectorDatabase = new MilvusVectorDatabase({
-            address: milvusAddress,
-            ...(milvusToken && { token: milvusToken })
+        const vectorDatabase = new LanceDBVectorDatabase({
+            uri: lancedbUri
         });
 
         // 2. Create Context instance
@@ -88,18 +86,16 @@ async function main() {
             if (error.message.includes('API key')) {
                 console.log('\n💡 Please make sure to set the correct GEMINI_API_KEY environment variable');
                 console.log('   Example: export GEMINI_API_KEY="your-actual-api-key"');
-            } else if (error.message.includes('Milvus') || error.message.includes('connect')) {
-                console.log('\n💡 Please make sure Milvus service is running');
-                console.log('   - Default address: localhost:19530');
-                console.log('   - Can be modified via MILVUS_ADDRESS environment variable');
-                console.log('   - Start Milvus: docker run -p 19530:19530 milvusdb/milvus:latest');
+            } else if (error.message.includes('LanceDB') || error.message.includes('connect')) {
+                console.log('\n💡 Please make sure the storage directory is accessible');
+                console.log('   - Default URI: ./.lancedb');
+                console.log('   - Can be modified via LANCEDB_URI environment variable');
             }
 
             console.log('\n💡 Environment Variables:');
             console.log('   - GEMINI_API_KEY: Your Google AI API key (required)');
             console.log('   - GEMINI_BASE_URL: Custom Gemini API endpoint (optional)');
-            console.log('   - MILVUS_ADDRESS: Milvus server address (default: localhost:19530)');
-            console.log('   - MILVUS_TOKEN: Milvus authentication token (optional)');
+            console.log('   - LANCEDB_URI: LanceDB storage path (default: ./.lancedb)');
         }
 
         process.exit(1);

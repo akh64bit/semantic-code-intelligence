@@ -1,6 +1,6 @@
 import { Context } from '../packages/core/src/context';
 import { OpenAIEmbedding } from '../packages/core/src/embedding/openai-embedding';
-import { MilvusVectorDatabase } from '../packages/core/src/vectordb/milvus-vectordb';
+import { LanceDBVectorDatabase } from '../packages/core/src/vectordb/lancedb-vectordb';
 import { AstCodeSplitter } from '../packages/core/src/splitter/ast-splitter';
 
 /**
@@ -9,7 +9,7 @@ import { AstCodeSplitter } from '../packages/core/src/splitter/ast-splitter';
  */
 export async function testContextEndToEnd(config: {
     openaiApiKey: string;
-    milvusAddress: string;
+    lancedbUri: string;
     codebasePath: string;
     searchQuery: string;
 }) {
@@ -24,9 +24,9 @@ export async function testContextEndToEnd(config: {
         });
 
         // 2. Create vector database instance
-        console.log('🗄️ Creating Milvus vector database instance...');
-        const vectorDB = new MilvusVectorDatabase({
-            address: config.milvusAddress
+        console.log('🗄️ Creating LanceDB vector database instance...');
+        const vectorDB = new LanceDBVectorDatabase({
+            uri: config.lancedbUri
         });
 
         // 3. Create Context instance
@@ -73,7 +73,7 @@ export async function testContextEndToEnd(config: {
                 embeddingProvider: embedding.getProvider(),
                 embeddingModel: 'text-embedding-3-small',
                 embeddingDimension: embedding.getDimension(),
-                vectorDatabase: 'Milvus',
+                vectorDatabase: 'LanceDB',
                 chunkSize: 1000,
                 chunkOverlap: 200
             },
