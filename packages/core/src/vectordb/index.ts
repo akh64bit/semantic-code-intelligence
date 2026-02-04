@@ -12,4 +12,4 @@ export {
 } from './types';
 
 // Implementation class exports
-export { LanceDBVectorDatabase, LanceDBConfig } from './lancedb-vectordb';
+export { LocalVectorDatabase, LocalDatabaseConfig } from './local-vdb';

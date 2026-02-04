@@ -21,8 +21,8 @@ import {
     ListToolsRequestSchema,
     CallToolRequestSchema
 } from "@modelcontextprotocol/sdk/types.js";
-import { Context } from "@zilliz/gemini-context-core";
-import { LanceDBVectorDatabase } from "@zilliz/gemini-context-core";
+import { Context } from "@gemini/gemini-code-intel-core";
+import { LocalVectorDatabase } from "@gemini/gemini-code-intel-core";
 
 // Import our modular components
 import { createMcpConfig, logConfigurationSummary, showHelpMessage, ContextMcpConfig } from "./config.js";
@@ -60,13 +60,13 @@ class ContextMcpServer {
         logEmbeddingProviderInfo(config, embedding);
 
         // Initialize vector database
-        console.log(`[VDB] Initializing LanceDB at: ${config.lancedbUri}`);
+        console.log(`[VDB] Initializing database at: ${config.dbUri}`);
 
-        const vectorDatabase = new LanceDBVectorDatabase({
-            uri: config.lancedbUri || './.lancedb'
+        const vectorDatabase = new LocalVectorDatabase({
+            uri: config.dbUri || './.db'
         });
 
-        // Initialize Gemini Context
+        // Initialize Gemini Code Intel
         this.context = new Context({
             embedding,
             vectorDatabase
@@ -248,7 +248,7 @@ This tool is versatile and can be used before completing various tasks to retrie
 
     async start() {
         console.log('[SYNC-DEBUG] MCP server start() method called');
-        console.log('Starting Context MCP server...');
+        console.log('Starting Gemini Code Intel MCP server...');
 
         const transport = new StdioServerTransport();
         console.log('[SYNC-DEBUG] StdioServerTransport created, attempting server connection...');
@@ -289,6 +289,7 @@ process.on('SIGINT', () => {
     process.exit(0);
 });
 
+// Handle graceful shutdown
 process.on('SIGTERM', () => {
     console.error("Received SIGTERM, shutting down gracefully...");
     process.exit(0);

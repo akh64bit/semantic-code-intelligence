@@ -1,4 +1,4 @@
-import { GeminiEmbedding } from "@zilliz/gemini-context-core";
+import { GeminiEmbedding } from "@gemini/gemini-code-intel-core";
 import { ContextMcpConfig } from "./config.js";
 
 // Helper function to create embedding instance for Gemini

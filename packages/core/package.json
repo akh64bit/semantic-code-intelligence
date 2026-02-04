@@ -1,7 +1,7 @@
 {
-    "name": "@zilliz/gemini-context-core",
+    "name": "@gemini/gemini-code-intel-core",
     "version": "0.1.3",
-    "description": "Core indexing engine for Gemini Context",
+    "description": "Core indexing engine for Gemini Code Intel",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
     "scripts": {
@@ -45,7 +45,7 @@
     ],
     "repository": {
         "type": "git",
-        "url": "https://github.com/zilliztech/gemini-context.git",
+        "url": "https://github.com/gemini/gemini-code-intel.git",
         "directory": "packages/core"
     },
     "license": "MIT",

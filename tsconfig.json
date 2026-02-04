@@ -21,10 +21,10 @@
         "incremental": true,
         "tsBuildInfoFile": ".tsbuildinfo",
         "paths": {
-            "@zilliz/gemini-context-core": [
+            "@gemini/gemini-code-intel-core": [
                 "./packages/core/src"
             ],
-            "@zilliz/gemini-context-core/*": [
+            "@gemini/gemini-code-intel-core/*": [
                 "./packages/core/src/*"
             ]
         }

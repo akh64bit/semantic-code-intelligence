@@ -105,12 +105,12 @@ importers:
 
   packages/mcp:
     dependencies:
+      '@gemini/gemini-code-intel-core':
+        specifier: workspace:*
+        version: link:../core
       '@modelcontextprotocol/sdk':
         specifier: ^1.12.1
         version: 1.12.1
-      '@zilliz/gemini-context-core':
-        specifier: workspace:*
-        version: link:../core
       zod:
         specifier: ^3.25.55
         version: 3.25.55

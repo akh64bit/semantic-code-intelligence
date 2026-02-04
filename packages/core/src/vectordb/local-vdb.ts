@@ -12,17 +12,21 @@ import {
 import * as path from 'path';
 import * as fs from 'fs-extra';
 
-export interface LanceDBConfig {
+export interface LocalDatabaseConfig {
     uri: string;
 }
 
-export class LanceDBVectorDatabase implements VectorDatabase {
-    private config: LanceDBConfig;
+/**
+ * Local implementation of VectorDatabase using an embedded provider.
+ * Terminology is kept generic to maintain provider anonymity.
+ */
+export class LocalVectorDatabase implements VectorDatabase {
+    private config: LocalDatabaseConfig;
     private db: lancedb.Connection | null = null;
     private initializationPromise: Promise<void>;
     private initError: Error | null = null;
 
-    constructor(config: LanceDBConfig) {
+    constructor(config: LocalDatabaseConfig) {
         this.config = config;
         this.initializationPromise = this.initialize();
     }
@@ -32,20 +36,20 @@ export class LanceDBVectorDatabase implements VectorDatabase {
             const storageDir = path.resolve(this.config.uri);
             await fs.ensureDir(storageDir);
             this.db = await lancedb.connect(storageDir);
-            console.log(`[LanceDB] 🚀 Connected to LanceDB at: ${storageDir}`);
+            console.log(`[VDB] 🚀 Connected to database at: ${storageDir}`);
         } catch (error: any) {
             this.initError = error;
-            console.error(`[LanceDB] ❌ Failed to initialize LanceDB: ${error.message}`);
+            console.error(`[VDB] ❌ Failed to initialize database: ${error.message}`);
         }
     }
 
     private async ensureInitialized(): Promise<void> {
         await this.initializationPromise;
         if (this.initError) {
-            throw new Error(`LanceDB initialization failed: ${this.initError.message}`);
+            throw new Error(`Database initialization failed: ${this.initError.message}`);
         }
         if (!this.db) {
-            throw new Error('LanceDB connection is not established.');
+            throw new Error('Database connection is not established.');
         }
     }
 
@@ -70,19 +74,20 @@ export class LanceDBVectorDatabase implements VectorDatabase {
 
         try {
             await this.db.createEmptyTable(collectionName, schema, { existOk: true });
-            console.log(`[LanceDB] ✅ Created table: ${collectionName}`);
+            console.log(`[VDB] ✅ Created table: ${collectionName}`);
         } catch (error: any) {
-            console.error(`[LanceDB] ❌ Failed to create table ${collectionName}:`, error.message);
+            console.error(`[VDB] ❌ Failed to create table ${collectionName}:`, error.message);
             throw error;
         }
     }
+
     async createHybridCollection(collectionName: string, dimension: number, description?: string): Promise<void> {
         await this.createCollection(collectionName, dimension, description);
         await this.ensureInitialized();
 
         const table = await this.db!.openTable(collectionName);
-        // LanceDB enables FTS via indices
-        console.log(`[LanceDB] 🔧 Creating FTS index for collection: ${collectionName}`);
+        // Enable full-text search via indices
+        console.log(`[VDB] 🔧 Creating FTS index for collection: ${collectionName}`);
         await table.createIndex('content', {
             config: lancedb.Index.fts(),
         });
@@ -123,8 +128,8 @@ export class LanceDBVectorDatabase implements VectorDatabase {
     }
 
     async insertHybrid(collectionName: string, documents: VectorDocument[]): Promise<void> {
-        // In LanceDB, hybrid insertion is same as normal insertion.
-        // FTS index handles the content field.
+        // Hybrid insertion uses the same path as normal insertion,
+        // as the FTS index automatically handles the content field.
         await this.insert(collectionName, documents);
     }
 
@@ -137,9 +142,7 @@ export class LanceDBVectorDatabase implements VectorDatabase {
             .limit(options?.topK || 10);
 
         if (options?.filterExpr) {
-            // Map filter to SQL
-            // e.g. 'id in ["1", "2"]' or 'fileExtension == ".ts"'
-            // LanceDB uses standard SQL
+            // Map filter to standard SQL expressions
             query = query.where(options.filterExpr);
         }
 
@@ -164,8 +167,7 @@ export class LanceDBVectorDatabase implements VectorDatabase {
         await this.ensureInitialized();
         const table = await this.db!.openTable(collectionName);
 
-        // searchRequests[0] is usually dense, searchRequests[1] is usually text (for FTS)
-        // If we have a text query, we use it.
+        // searchRequests[0] is typically dense, searchRequests[1] is typically text (for FTS)
         const denseRequest = searchRequests.find(r => Array.isArray(r.data));
         const textRequest = searchRequests.find(r => typeof r.data === 'string');
 
@@ -176,7 +178,7 @@ export class LanceDBVectorDatabase implements VectorDatabase {
         }
 
         if (textRequest) {
-            // Note: LanceDB hybrid search (Vector + FTS)
+            // Execute hybrid search (Vector + FTS)
             queryBuilder = queryBuilder.fullTextSearch(textRequest.data as string);
         }
 
@@ -242,7 +244,7 @@ export class LanceDBVectorDatabase implements VectorDatabase {
     }
 
     async checkCollectionLimit(): Promise<boolean> {
-        // LanceDB doesn't have a practical collection limit like Zilliz free tier
+        // Local database implementations typically do not have practical collection limits
         return true;
     }
 }

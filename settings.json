@@ -8,13 +8,13 @@
     "previewFeatures": true
   },
   "mcpServers": {
-    "gemini-context": {
+    "gemini-code-intel": {
       "command": "node",
       "args": [
         "/usr/local/google/home/akkr/Documents/code-intelligence/code-intel/packages/mcp/dist/index.js"
       ],
       "env": {
-        "LANCEDB_URI": "~/.gemini-context/lancedb"
+        "DB_URI": "~/.gemini-code-intel/db"
       }
     }
   }

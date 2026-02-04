@@ -1,10 +1,10 @@
-# Gemini Context
+# Gemini Code Intel
 
-Gemini Context is a Model Context Protocol (MCP) plugin that enables semantic code search for AI assistants. It provides deep context from an entire codebase by indexing it into a local vector database, allowing efficient and cost-effective retrieval of relevant code snippets.
+Gemini Code Intel is a Model Context Protocol (MCP) plugin that enables semantic code search for AI assistants. It provides deep context from an entire codebase by indexing it into a local vector database, allowing efficient and cost-effective retrieval of relevant code snippets.
 
 ## Modules
 
-### Core (@zilliz/gemini-context-core)
+### Core (@gemini/gemini-code-intel-core)
 The core indexing engine responsible for semantic search and codebase analysis.
 
 - **Key Features**:
@@ -20,14 +20,14 @@ The core indexing engine responsible for semantic search and codebase analysis.
   - semanticSearch: Performs semantic queries against the indexed code.
   - clearIndex: Removes existing index data.
 
-### MCP (@zilliz/gemini-context-mcp)
+### MCP (@gemini/gemini-code-intel-mcp)
 Integrates the core engine with the Model Context Protocol for use with AI agents and clients.
 
-- **Prerequisites**: Node.js (18+), Gemini API key.
+- **Prerequisites**: Node.js (20+), Gemini API key.
 - **Environment Variables**:
   - GEMINI_API_KEY: Required API key for embeddings.
   - EMBEDDING_MODEL: Optional model specification (default: gemini-embedding-001).
-  - LANCEDB_URI: Optional local storage path (default: ~/.gemini-context/lancedb).
+  - DB_URI: Optional local storage path (default: ~/.gemini-code-intel/db).
   - EMBEDDING_BATCH_SIZE: Optional batch size for performance tuning.
 - **Available Tools**:
   - index_codebase: Index a codebase directory.
@@ -37,6 +37,6 @@ Integrates the core engine with the Model Context Protocol for use with AI agent
 
 ## Technical Overview
 
-- **Storage**: Uses LanceDB for high-performance, serverless embedded vector storage.
+- **Storage**: Uses high-performance, serverless embedded vector storage.
 - **Embeddings**: Optimized for Google's Gemini embedding models.
 - **Languages**: Supports TypeScript, JavaScript, Python, Java, C++, C#, Go, Rust, PHP, Ruby, Swift, Kotlin, Scala, and Markdown.
