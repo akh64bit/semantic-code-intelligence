@@ -19,7 +19,7 @@ Model Context Protocol (MCP) allows you to integrate Gemini Context with your fa
 Before using the MCP server, make sure you have:
 
 - Gemini API key
-- Milvus vector database (local or cloud)
+- Node.js 18 or later
 
 > 💡 **Setup Help:** See the [main project setup guide](../../README.md#-quick-start) for detailed installation instructions.
 
@@ -46,12 +46,12 @@ GEMINI_BASE_URL=https://generativelanguage.googleapis.com/v1beta
 1. Visit [Google AI Studio](https://aistudio.google.com/)
 2. Create a new API key
 
-#### Get a free vector database on Zilliz Cloud
+#### LanceDB Configuration (Optional)
 
-Gemini Context needs a vector database. You can [sign up](https://cloud.zilliz.com/signup?utm_source=github&utm_medium=referral&utm_campaign=2507-codecontext-readme) on Zilliz Cloud to get an API key.
+By default, data is stored in `~/.gemini-context/lancedb`. You can override this using:
 
 ```bash
-MILVUS_TOKEN=your-zilliz-cloud-api-key
+LANCEDB_URI=/path/to/your/storage
 ```
 
 #### Embedding Batch Size
@@ -70,7 +70,7 @@ EMBEDDING_BATCH_SIZE=512
 Use the command line interface to add the Gemini Context MCP server:
 
 ```bash
-gemini mcp add gemini-context -e GEMINI_API_KEY=your-gemini-api-key -e MILVUS_TOKEN=your-zilliz-cloud-api-key -- npx @zilliz/gemini-context-mcp@latest
+gemini mcp add gemini-context -e GEMINI_API_KEY=your-gemini-api-key -- npx @zilliz/gemini-context-mcp@latest
 ```
 
 </details>
@@ -87,8 +87,7 @@ Go to: `Settings` -> `Cursor Settings` -> `MCP` -> `Add new global MCP server`
       "command": "npx",
       "args": ["-y", "@zilliz/gemini-context-mcp@latest"],
       "env": {
-        "GEMINI_API_KEY": "your-gemini-api-key",
-        "MILVUS_TOKEN": "your-zilliz-cloud-api-key"
+        "GEMINI_API_KEY": "your-gemini-api-key"
       }
     }
   }
@@ -100,11 +99,11 @@ Go to: `Settings` -> `Cursor Settings` -> `MCP` -> `Add new global MCP server`
 ## Features
 
 - 🔌 **MCP Protocol Compliance**: Full compatibility with MCP-enabled AI assistants
-- 🔍 **Hybrid Code Search**: Advanced hybrid search (BM25 + dense vector) powered by Milvus
+- 🔍 **Hybrid Code Search**: Advanced hybrid search (FTS + dense vector) powered by LanceDB
 - 📁 **Codebase Indexing**: Fast hybrid search across millions of lines of code
 - 🔄 **Incremental Indexing**: Efficiently re-index only changed files using Merkle trees
 - 🧩 **Intelligent Code Chunking**: AST-based code analysis for syntax-aware chunking
-- 🗄️ **Scalable**: Integrates with Zilliz Cloud for scalable vector search
+- 🗄️ **Serverless**: Embedded storage using LanceDB, no external database required
 
 ## Available Tools
 

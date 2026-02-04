@@ -137,8 +137,8 @@ export class LanceDBVectorDatabase implements VectorDatabase {
             .limit(options?.topK || 10);
 
         if (options?.filterExpr) {
-            // Map Milvus-style filter to SQL
-            // Milvus uses 'id in ["1", "2"]' or 'fileExtension == ".ts"'
+            // Map filter to SQL
+            // e.g. 'id in ["1", "2"]' or 'fileExtension == ".ts"'
             // LanceDB uses standard SQL
             query = query.where(options.filterExpr);
         }

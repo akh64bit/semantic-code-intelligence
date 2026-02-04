@@ -9,15 +9,13 @@
 [![Documentation](https://img.shields.io/badge/Documentation-📚-orange.svg)](docs/)
 [![npm - core](https://img.shields.io/npm/v/@zilliz/gemini-context-core?label=%40zilliz%2Fgemini-context-core&logo=npm)](https://www.npmjs.com/package/@zilliz/gemini-context-core)
 [![npm - mcp](https://img.shields.io/npm/v/@zilliz/gemini-context-mcp?label=%40zilliz%2Fgemini-context-mcp&logo=npm)](https://www.npmjs.com/package/@zilliz/gemini-context-mcp)
-[![Twitter](https://img.shields.io/twitter/url/https/twitter.com/zilliz_universe.svg?style=social&label=Follow%20%40Zilliz)](https://twitter.com/zilliz_universe)
-<a href="https://discord.gg/mKc3R95yE5"><img height="20" src="https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white" alt="discord" /></a>
 </div>
 
 **Gemini Context** is an MCP plugin that adds semantic code search to Gemini CLI and other AI coding agents, giving them deep context from your entire codebase.
 
 🧠 **Your Entire Codebase as Context**: Gemini Context uses semantic search to find all relevant code from millions of lines. No multi-round discovery needed. It brings results straight into the Gemini's context.
 
-💰 **Cost-Effective for Large Codebases**: Instead of loading entire directories into Gemini for every request, which can be very expensive, Gemini Context efficiently stores your codebase in a vector database and only uses related code in context to keep your costs manageable.
+💰 **Cost-Effective for Large Codebases**: Instead of loading entire directories into Gemini for every request, which can be very expensive, Gemini Context efficiently stores your codebase in a local vector database and only uses related code in context to keep your costs manageable.
 
 ---
 
@@ -31,32 +29,16 @@ Model Context Protocol (MCP) allows you to integrate Gemini Context with your fa
 
 ### Prerequisites
 
-<details>
-<summary>Get a free vector database on Zilliz Cloud 👈</summary>
+- Node.js >= 20.0.0 and < 24.0.0
+- Gemini API key
 
-Gemini Context needs a vector database. You can [sign up](https://cloud.zilliz.com/signup?utm_source=github&utm_medium=referral&utm_campaign=2507-codecontext-readme) on Zilliz Cloud to get an API key.
-
-![](assets/signup_and_get_apikey.png)
-
-Copy your Personal Key to replace `your-zilliz-cloud-api-key` in the configuration examples.
-</details>
-
-<details>
-<summary>Get Gemini API Key for embedding model</summary>
+### Get Gemini API Key for embedding model
 
 You need a Gemini API key for the embedding model. You can get one by signing up at [Google AI Studio](https://aistudio.google.com/).  
 
 Copy your key and use it in the configuration examples below as `your-gemini-api-key`.
 
-</details>
-
 ### Configure MCP for Gemini CLI
-
-**System Requirements:**
-
-- Node.js >= 20.0.0 and < 24.0.0
-
-> Gemini Context is not compatible with Node.js 24.0.0, you need downgrade it first if your node version is greater or equal to 24.
 
 #### Configuration
 
@@ -66,7 +48,6 @@ Use the command line interface to add the Gemini Context MCP server to your pref
 # Add gemini-context to your gemini configuration
 gemini mcp add gemini-context \
   -e GEMINI_API_KEY=your-gemini-api-key \
-  -e MILVUS_TOKEN=your-zilliz-cloud-api-key \
   -- npx @zilliz/gemini-context-mcp@latest
 ```
 
@@ -87,8 +68,7 @@ Gemini CLI requires manual configuration through a JSON file:
       "command": "npx",
       "args": ["@zilliz/gemini-context-mcp@latest"],
       "env": {
-        "GEMINI_API_KEY": "your-gemini-api-key",
-        "MILVUS_TOKEN": "your-zilliz-cloud-api-key"
+        "GEMINI_API_KEY": "your-gemini-api-key"
       }
     }
   }
@@ -113,9 +93,7 @@ Pasting the following configuration into your Cursor `~/.cursor/mcp.json` file i
       "command": "npx",
       "args": ["-y", "@zilliz/gemini-context-mcp@latest"],
       "env": {
-        "GEMINI_API_KEY": "your-gemini-api-key",
-        "MILVUS_ADDRESS": "your-zilliz-cloud-public-endpoint",
-        "MILVUS_TOKEN": "your-zilliz-cloud-api-key"
+        "GEMINI_API_KEY": "your-gemini-api-key"
       }
     }
   }
@@ -160,10 +138,10 @@ Pasting the following configuration into your Cursor `~/.cursor/mcp.json` file i
 ### Available Tools
 
 #### 1. `index_codebase`
-Index a codebase directory for hybrid search (BM25 + dense vector).
+Index a codebase directory for hybrid search (FTS + dense vector).
 
 #### 2. `search_code`
-Search the indexed codebase using natural language queries with hybrid search (BM25 + dense vector).
+Search the indexed codebase using natural language queries with hybrid search (FTS + dense vector).
 
 #### 3. `clear_index`
 Clear the search index for a specific codebase.
@@ -179,23 +157,23 @@ Get the current indexing status of a codebase.
 
 ### 🔧 Implementation Details
 
-- 🔍 **Hybrid Code Search**: Advanced hybrid search (BM25 + dense vector) powered by Milvus.
+- 🔍 **Hybrid Code Search**: Advanced hybrid search (FTS + dense vector) powered by LanceDB.
 - 🧠 **Context-Aware**: Understand how different parts of your codebase relate.
 - ⚡ **Incremental Indexing**: Efficiently re-index only changed files using Merkle trees.
 - 🧩 **Intelligent Code Chunking**: Analyze code in Abstract Syntax Trees (AST) for chunking.
-- 🗄️ **Scalable**: Integrates with Zilliz Cloud for scalable vector search.
+- 🗄️ **Embedded Storage**: Uses LanceDB for high-performance serverless vector search.
 
 ### Core Components
 
 Gemini Context is a monorepo containing two main packages:
 
-- **`@zilliz/gemini-context-core`**: Core indexing engine with Gemini embedding and Milvus integration
+- **`@zilliz/gemini-context-core`**: Core indexing engine with Gemini embedding and LanceDB integration
 - **`@zilliz/gemini-context-mcp`**: Model Context Protocol server for AI agent integration
 
 ### Supported Technologies
 
 - **Embedding Providers**: [Gemini](https://gemini.google.com)
-- **Vector Databases**: [Milvus](https://milvus.io) or [Zilliz Cloud](https://zilliz.com/cloud)
+- **Vector Databases**: [LanceDB](https://lancedb.com)
 - **Code Splitters**: AST-based splitter (with native fallback)
 - **Languages**: TypeScript, JavaScript, Python, Java, C++, C#, Go, Rust, PHP, Ruby, Swift, Kotlin, Scala, Markdown
 - **Development Tools**: Model Context Protocol
@@ -207,7 +185,7 @@ Gemini Context is a monorepo containing two main packages:
 The `@zilliz/gemini-context-core` package provides the fundamental functionality for code indexing and semantic search.
 
 ```typescript
-import { Context, MilvusVectorDatabase, GeminiEmbedding } from '@zilliz/gemini-context-core';
+import { Context, LanceDBVectorDatabase, GeminiEmbedding } from '@zilliz/gemini-context-core';
 
 // Initialize embedding provider
 const embedding = new GeminiEmbedding({
@@ -216,9 +194,8 @@ const embedding = new GeminiEmbedding({
 });
 
 // Initialize vector database
-const vectorDatabase = new MilvusVectorDatabase({
-    address: process.env.MILVUS_ADDRESS || 'your-zilliz-cloud-public-endpoint',
-    token: process.env.MILVUS_TOKEN || 'your-zilliz-cloud-api-key'
+const vectorDatabase = new LanceDBVectorDatabase({
+    uri: process.env.LANCEDB_URI || './.lancedb'
 });
 
 // Create context instance

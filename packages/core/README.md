@@ -2,7 +2,7 @@
 
 ![](../../assets/gemini-context.png)
 
-The core indexing engine for Gemini Context - a powerful tool for semantic search and analysis of codebases using Gemini embeddings and Milvus.
+The core indexing engine for Gemini Context - a powerful tool for semantic search and analysis of codebases using Gemini embeddings and LanceDB.
 
 [![npm version](https://img.shields.io/npm/v/@zilliz/gemini-context-core.svg)](https://www.npmjs.com/package/@zilliz/gemini-context-core)
 [![npm downloads](https://img.shields.io/npm/dm/@zilliz/gemini-context-core.svg)](https://www.npmjs.com/package/@zilliz/gemini-context-core)
@@ -23,17 +23,8 @@ Get your API key from [Google AI Studio](https://aistudio.google.com/).
 GEMINI_API_KEY=your-gemini-api-key
 ```
 
-#### Zilliz Cloud configuration
-Get a free Milvus vector database on Zilliz Cloud. 
-
-Gemini Context needs a vector database. You can [sign up](https://cloud.zilliz.com/signup?utm_source=github&utm_medium=referral&utm_campaign=2507-codecontext-readme) on Zilliz Cloud to get a free Serverless cluster.
-
-![](../../assets/signup_and_create_cluster.jpeg)
-
-```bash
-MILVUS_ADDRESS=your-zilliz-cloud-public-endpoint
-MILVUS_TOKEN=your-zilliz-cloud-api-key
-``` 
+#### LanceDB Configuration (Optional)
+Gemini Context uses LanceDB for embedded vector storage. By default, data is stored in `~/.gemini-context/lancedb`. You can override this using the `LANCEDB_URI` environment variable.
 
 ## Quick Start
 
@@ -41,7 +32,7 @@ MILVUS_TOKEN=your-zilliz-cloud-api-key
 import { 
   Context, 
   GeminiEmbedding, 
-  MilvusVectorDatabase 
+  LanceDBVectorDatabase 
 } from '@zilliz/gemini-context-core';
 
 // Initialize embedding provider
@@ -51,9 +42,8 @@ const embedding = new GeminiEmbedding({
 });
 
 // Initialize vector database
-const vectorDatabase = new MilvusVectorDatabase({
-  address: process.env.MILVUS_ADDRESS || 'localhost:19530',
-  token: process.env.MILVUS_TOKEN || ''
+const vectorDatabase = new LanceDBVectorDatabase({
+  uri: process.env.LANCEDB_URI || './.lancedb'
 });
 
 // Create context instance

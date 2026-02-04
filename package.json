@@ -4,7 +4,7 @@
     "description": "A powerful code indexing tool for Gemini CLI",
     "private": true,
     "scripts": {
-        "build": "pnpm -r --filter='!./examples/*' build && pnpm -r --filter='./examples/*' build",
+        "build": "pnpm -r build",
         "build:core": "pnpm --filter @zilliz/gemini-context-core build",
         "build:mcp": "pnpm --filter @zilliz/gemini-context-mcp build",
         "dev": "pnpm -r dev",
