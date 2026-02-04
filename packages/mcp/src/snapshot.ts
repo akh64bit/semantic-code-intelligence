@@ -353,7 +353,17 @@ export class SnapshotManager {
      */
     public setCodebaseIndexed(
         codebasePath: string,
-        stats: { indexedFiles: number; totalChunks: number; status: 'completed' | 'limit_reached' }
+        stats: {
+            indexedFiles: number;
+            totalChunks: number;
+            status: 'completed' | 'limit_reached';
+            totalElapsedTimeMs?: number;
+            languageBreakdown?: Record<string, number>;
+            totalCharacters?: number;
+            totalTokens?: number;
+            averageChunkSize?: number;
+            chunkSizeDistribution?: Record<string, number>;
+        }
     ): void {
         // Add to indexed list if not already there
         if (!this.indexedCodebases.includes(codebasePath)) {
@@ -371,7 +381,19 @@ export class SnapshotManager {
             indexedFiles: stats.indexedFiles,
             totalChunks: stats.totalChunks,
             indexStatus: stats.status,
-            lastUpdated: new Date().toISOString()
+            lastUpdated: new Date().toISOString(),
+            performance: stats.totalElapsedTimeMs ? {
+                totalElapsedTimeMs: stats.totalElapsedTimeMs
+            } : undefined,
+            metadata: stats.languageBreakdown ? {
+                languageBreakdown: stats.languageBreakdown,
+                totalCharacters: stats.totalCharacters || 0,
+                totalTokens: stats.totalTokens || 0,
+                chunkingTelemetry: {
+                    averageChunkSize: stats.averageChunkSize || 0,
+                    chunkSizeDistribution: stats.chunkSizeDistribution || {}
+                }
+            } : undefined
         };
         this.codebaseInfoMap.set(codebasePath, info);
     }

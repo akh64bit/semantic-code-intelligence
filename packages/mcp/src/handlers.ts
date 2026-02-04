@@ -728,10 +728,42 @@ export class ToolHandlers {
                 case 'indexed':
                     if (info && 'indexedFiles' in info) {
                         const indexedInfo = info as any;
-                        statusMessage = `✅ Codebase '${absolutePath}' is fully indexed and ready for search.`;
-                        statusMessage += `\n📊 Statistics: ${indexedInfo.indexedFiles} files, ${indexedInfo.totalChunks} chunks`;
-                        statusMessage += `\n📅 Status: ${indexedInfo.indexStatus}`;
-                        statusMessage += `\n🕐 Last updated: ${new Date(indexedInfo.lastUpdated).toLocaleString()}`;
+                        statusMessage = `✅ Codebase '${absolutePath}' is fully indexed and ready for search.\n`;
+                        
+                        statusMessage += `\n📊 **Core Statistics**:`;
+                        statusMessage += `\n   • Files: ${indexedInfo.indexedFiles}`;
+                        statusMessage += `\n   • Chunks: ${indexedInfo.totalChunks}`;
+                        statusMessage += `\n   • Status: ${indexedInfo.indexStatus}`;
+
+                        if (indexedInfo.performance) {
+                            const seconds = (indexedInfo.performance.totalElapsedTimeMs / 1000).toFixed(1);
+                            statusMessage += `\n\n⚡ **Performance**:`;
+                            statusMessage += `\n   • Total indexing time: ${seconds}s`;
+                        }
+
+                        if (indexedInfo.metadata) {
+                            const meta = indexedInfo.metadata;
+                            statusMessage += `\n\n📂 **Structural Metadata**:`;
+                            statusMessage += `\n   • Total Size: ${meta.totalCharacters.toLocaleString()} characters (~${meta.totalTokens.toLocaleString()} tokens)`;
+                            
+                            // Language breakdown (top 5)
+                            const languages = Object.entries(meta.languageBreakdown)
+                                .sort((a: any, b: any) => b[1] - a[1])
+                                .slice(0, 5);
+                            statusMessage += `\n   • Languages: ${languages.map(([ext, count]) => `${ext} (${count})`).join(', ')}`;
+
+                            // Chunking telemetry
+                            statusMessage += `\n\n🧩 **Chunking Telemetry**:`;
+                            statusMessage += `\n   • Average chunk size: ${meta.chunkingTelemetry.averageChunkSize} chars`;
+                            statusMessage += `\n   • Size distribution:`;
+                            for (const [bucket, count] of Object.entries(meta.chunkingTelemetry.chunkSizeDistribution)) {
+                                if (count as number > 0) {
+                                    statusMessage += `\n     - ${bucket}: ${count} chunks`;
+                                }
+                            }
+                        }
+
+                        statusMessage += `\n\n🕐 **Last updated**: ${new Date(indexedInfo.lastUpdated).toLocaleString()}`;
                     } else {
                         statusMessage = `✅ Codebase '${absolutePath}' is fully indexed and ready for search.`;
                     }

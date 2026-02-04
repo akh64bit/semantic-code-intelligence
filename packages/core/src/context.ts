@@ -16,7 +16,7 @@ import {
     HybridSearchOptions,
     HybridSearchResult
 } from './vectordb';
-import { SemanticSearchResult } from './types';
+import { SemanticSearchResult, IndexingResult } from './types';
 import { envManager } from './utils/env-manager';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -250,7 +250,8 @@ export class Context {
         codebasePath: string,
         progressCallback?: (progress: { phase: string; current: number; total: number; percentage: number }) => void,
         forceReindex: boolean = false
-    ): Promise<{ indexedFiles: number; totalChunks: number; status: 'completed' | 'limit_reached' }> {
+    ): Promise<IndexingResult> {
+        const startTime = Date.now();
         const isHybrid = this.getIsHybrid();
         const searchType = isHybrid === true ? 'hybrid search' : 'semantic search';
         console.log(`[Context] 🚀 Starting to index codebase with ${searchType}: ${codebasePath}`);
@@ -270,7 +271,17 @@ export class Context {
 
         if (codeFiles.length === 0) {
             progressCallback?.({ phase: 'No files to index', current: 100, total: 100, percentage: 100 });
-            return { indexedFiles: 0, totalChunks: 0, status: 'completed' };
+            return {
+                indexedFiles: 0,
+                totalChunks: 0,
+                status: 'completed',
+                totalElapsedTimeMs: Date.now() - startTime,
+                languageBreakdown: {},
+                totalCharacters: 0,
+                totalTokens: 0,
+                averageChunkSize: 0,
+                chunkSizeDistribution: {}
+            };
         }
 
         // 3. Process each file with streaming chunk processing
@@ -296,7 +307,8 @@ export class Context {
             }
         );
 
-        console.log(`[Context] ✅ Codebase indexing completed! Processed ${result.processedFiles} files in total, generated ${result.totalChunks} code chunks`);
+        const totalElapsedTimeMs = Date.now() - startTime;
+        console.log(`[Context] ✅ Codebase indexing completed! Processed ${result.processedFiles} files in total, generated ${result.totalChunks} code chunks in ${totalElapsedTimeMs}ms`);
 
         progressCallback?.({
             phase: 'Indexing complete!',
@@ -308,7 +320,13 @@ export class Context {
         return {
             indexedFiles: result.processedFiles,
             totalChunks: result.totalChunks,
-            status: result.status
+            status: result.status,
+            totalElapsedTimeMs,
+            languageBreakdown: result.languageBreakdown,
+            totalCharacters: result.totalCharacters,
+            totalTokens: result.totalTokens,
+            averageChunkSize: result.averageChunkSize,
+            chunkSizeDistribution: result.chunkSizeDistribution
         };
     }
 
@@ -699,7 +717,16 @@ export class Context {
         filePaths: string[],
         codebasePath: string,
         onFileProcessed?: (filePath: string, fileIndex: number, totalFiles: number) => void
-    ): Promise<{ processedFiles: number; totalChunks: number; status: 'completed' | 'limit_reached' }> {
+    ): Promise<{
+        processedFiles: number;
+        totalChunks: number;
+        status: 'completed' | 'limit_reached';
+        languageBreakdown: Record<string, number>;
+        totalCharacters: number;
+        totalTokens: number;
+        averageChunkSize: number;
+        chunkSizeDistribution: Record<string, number>;
+    }> {
         const isHybrid = this.getIsHybrid();
         const EMBEDDING_BATCH_SIZE = Math.max(1, parseInt(envManager.get('EMBEDDING_BATCH_SIZE') || '100', 10));
         const CHUNK_LIMIT = 450000;
@@ -710,12 +737,31 @@ export class Context {
         let totalChunks = 0;
         let limitReached = false;
 
+        // Stats accumulators
+        const languageBreakdown: Record<string, number> = {};
+        let totalCharacters = 0;
+        let totalTokens = 0;
+        let sumChunkSizes = 0;
+        const chunkSizeDistribution: Record<string, number> = {
+            '0-500': 0,
+            '501-1000': 0,
+            '1001-2000': 0,
+            '2000+': 0
+        };
+
         for (let i = 0; i < filePaths.length; i++) {
             const filePath = filePaths[i];
 
             try {
                 const content = await fs.promises.readFile(filePath, 'utf-8');
-                const language = this.getLanguageFromExtension(path.extname(filePath));
+                const ext = path.extname(filePath) || 'no-extension';
+                const language = this.getLanguageFromExtension(ext);
+
+                // Update file stats
+                languageBreakdown[ext] = (languageBreakdown[ext] || 0) + 1;
+                totalCharacters += content.length;
+                totalTokens += Math.ceil(content.length / 4); // Estimated tokens
+
                 const chunks = await this.codeSplitter.split(content, language, filePath);
 
                 // Log files with many chunks or large content
@@ -727,6 +773,14 @@ export class Context {
 
                 // Add chunks to buffer
                 for (const chunk of chunks) {
+                    // Update chunk stats
+                    const size = chunk.content.length;
+                    sumChunkSizes += size;
+                    if (size <= 500) chunkSizeDistribution['0-500']++;
+                    else if (size <= 1000) chunkSizeDistribution['501-1000']++;
+                    else if (size <= 2000) chunkSizeDistribution['1001-2000']++;
+                    else chunkSizeDistribution['2000+']++;
+
                     chunkBuffer.push({ chunk, codebasePath });
                     totalChunks++;
 
@@ -782,7 +836,12 @@ export class Context {
         return {
             processedFiles,
             totalChunks,
-            status: limitReached ? 'limit_reached' : 'completed'
+            status: limitReached ? 'limit_reached' : 'completed',
+            languageBreakdown,
+            totalCharacters,
+            totalTokens,
+            averageChunkSize: totalChunks > 0 ? Math.round(sumChunkSizes / totalChunks) : 0,
+            chunkSizeDistribution
         };
     }
 
