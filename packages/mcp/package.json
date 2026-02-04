@@ -1,7 +1,7 @@
 {
-    "name": "@zilliz/gemini-context-mcp",
+    "name": "@gemini/gemini-code-intel-mcp",
     "version": "0.1.3",
-    "description": "Model Context Protocol integration for Gemini Context",
+    "description": "Model Context Protocol integration for Gemini Code Intel",
     "type": "module",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -14,11 +14,11 @@
         "lint:fix": "eslint src --ext .ts --fix",
         "typecheck": "tsc --noEmit",
         "start": "tsx src/index.ts",
-        "start:with-env": "GEMINI_API_KEY=${GEMINI_API_KEY:your-api-key-here} MILVUS_ADDRESS=${MILVUS_ADDRESS:localhost:19530} tsx src/index.ts",
+        "start:with-env": "GEMINI_API_KEY=${GEMINI_API_KEY:your-api-key-here} DB_URI=${DB_URI:~/.gemini-code-intel/db} tsx src/index.ts",
         "prepublishOnly": "pnpm build"
     },
     "dependencies": {
-        "@zilliz/gemini-context-core": "workspace:*",
+        "@gemini/gemini-code-intel-core": "workspace:*",
         "@modelcontextprotocol/sdk": "^1.12.1",
         "zod": "^3.25.55"
     },
@@ -33,7 +33,7 @@
     ],
     "repository": {
         "type": "git",
-        "url": "https://github.com/zilliztech/gemini-context.git",
+        "url": "https://github.com/gemini/gemini-code-intel.git",
         "directory": "packages/mcp"
     },
     "license": "MIT",

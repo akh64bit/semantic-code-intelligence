@@ -382,7 +382,7 @@ export class Context {
     }
 
     private async deleteFileChunks(collectionName: string, relativePath: string): Promise<void> {
-        // Escape backslashes for Milvus query expression (Windows path compatibility)
+        // Escape backslashes for query expression (Windows path compatibility)
         const escapedPath = relativePath.replace(/\\/g, '\\\\');
         const results = await this.vectorDatabase.query(
             collectionName,
@@ -956,7 +956,7 @@ export class Context {
                 fileBasedPatterns.push(...patterns);
             }
 
-            // Load global ~/.context/.contextignore
+            // Load global ~/.gemini-code-intel/.gemini-code-intel-ignore
             const globalIgnorePatterns = await this.loadGlobalIgnoreFile();
             fileBasedPatterns.push(...globalIgnorePatterns);
 
@@ -1009,8 +1009,8 @@ export class Context {
     private async loadGlobalIgnoreFile(): Promise<string[]> {
         try {
             const homeDir = require('os').homedir();
-            const globalIgnorePath = path.join(homeDir, '.context', '.contextignore');
-            return await this.loadIgnoreFile(globalIgnorePath, 'global .contextignore');
+            const globalIgnorePath = path.join(homeDir, '.gemini-code-intel', '.gemini-code-intel-ignore');
+            return await this.loadIgnoreFile(globalIgnorePath, 'global .gemini-code-intel-ignore');
         } catch (error) {
             // Global ignore file is optional, don't log warnings
             return [];

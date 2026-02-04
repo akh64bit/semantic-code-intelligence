@@ -1,5 +1,5 @@
 import * as fs from "fs";
-import { Context, FileSynchronizer } from "@zilliz/gemini-context-core";
+import { Context, FileSynchronizer } from "@gemini/gemini-code-intel-core";
 import { SnapshotManager } from "./snapshot.js";
 
 export class SyncManager {
@@ -79,8 +79,8 @@ export class SyncManager {
                     console.error(`[SYNC-DEBUG] Error syncing codebase '${codebasePath}' after ${codebaseElapsed}ms:`, error);
                     console.error(`[SYNC-DEBUG] Error stack:`, error.stack);
 
-                    if (error.message.includes('Failed to query Milvus')) {
-                        // Collection maybe deleted manually, delete the snapshot file
+                    if (error.message.includes('not found') || error.message.includes('does not exist')) {
+                        // Table maybe deleted manually, delete the snapshot file
                         await FileSynchronizer.deleteSnapshot(codebasePath);
                     }
 

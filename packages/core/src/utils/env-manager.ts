@@ -7,12 +7,13 @@ export class EnvManager {
 
     constructor() {
         const homeDir = os.homedir();
-        this.envFilePath = path.join(homeDir, '.context', '.env');
+        // Updated from .context to .gemini-code-intel for branding consistency
+        this.envFilePath = path.join(homeDir, '.gemini-code-intel', '.env');
     }
 
     /**
      * Get environment variable by name
-     * Priority: process.env > .env file > undefined
+     * Priority: process.env > .env file > legacy fallback > undefined
      */
     get(name: string): string | undefined {
         // First try to get from process environment variables
@@ -35,6 +36,11 @@ export class EnvManager {
             }
         } catch (error) {
             // Ignore file read errors
+        }
+
+        // Handle specific legacy fallbacks if needed
+        if (name === 'DB_URI') {
+            return this.get('LANCEDB_URI');
         }
 
         return undefined;
@@ -98,4 +104,4 @@ export class EnvManager {
 }
 
 // Export a default instance for convenience
-export const envManager = new EnvManager(); 
+export const envManager = new EnvManager();

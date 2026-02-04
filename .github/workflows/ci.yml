@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [master, main, gemini_context]
+    branches: [master, main, gemini_code_intel]
   pull_request:
-    branches: [master, main, gemini_context]
+    branches: [master, main, gemini_code_intel]
 
 jobs:
   lint_and_build:

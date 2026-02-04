@@ -1,22 +1,22 @@
 {
-    "name": "gemini-context",
+    "name": "gemini-code-intel",
     "version": "0.1.3",
     "description": "A powerful code indexing tool for Gemini CLI",
     "private": true,
     "scripts": {
-        "build": "pnpm -r --filter='!./examples/*' build && pnpm -r --filter='./examples/*' build",
-        "build:core": "pnpm --filter @zilliz/gemini-context-core build",
-        "build:mcp": "pnpm --filter @zilliz/gemini-context-mcp build",
+        "build": "pnpm -r build",
+        "build:core": "pnpm --filter @gemini/gemini-code-intel-core build",
+        "build:mcp": "pnpm --filter @gemini/gemini-code-intel-mcp build",
         "dev": "pnpm -r dev",
-        "dev:core": "pnpm --filter @zilliz/gemini-context-core dev",
-        "dev:mcp": "pnpm --filter @zilliz/gemini-context-mcp dev",
+        "dev:core": "pnpm --filter @gemini/gemini-code-intel-core dev",
+        "dev:mcp": "pnpm --filter @gemini/gemini-code-intel-mcp dev",
         "clean": "pnpm -r clean",
         "lint": "pnpm -r lint",
         "lint:fix": "pnpm -r run lint:fix",
         "typecheck": "pnpm -r run typecheck",
-        "release:core": "pnpm --filter @zilliz/gemini-context-core... run build && pnpm --filter @zilliz/gemini-context-core publish --access public --no-git-checks",
-        "release:mcp": "pnpm --filter @zilliz/gemini-context-mcp... run build && pnpm --filter @zilliz/gemini-context-mcp publish --access public --no-git-checks",
-        "example:basic": "pnpm --filter gemini-context-basic-example start",
+        "release:core": "pnpm --filter @gemini/gemini-code-intel-core... run build && pnpm --filter @gemini/gemini-code-intel-core publish --access public --no-git-checks",
+        "release:mcp": "pnpm --filter @gemini/gemini-code-intel-mcp... run build && pnpm --filter @gemini/gemini-code-intel-mcp publish --access public --no-git-checks",
+        "example:basic": "pnpm --filter gemini-code-intel-basic-example start",
         "benchmark": "node scripts/build-benchmark.js"
     },
     "devDependencies": {
@@ -34,7 +34,7 @@
     },
     "repository": {
         "type": "git",
-        "url": "https://github.com/zilliztech/gemini-context.git"
+        "url": "https://github.com/gemini/gemini-code-intel.git"
     },
     "license": "MIT",
     "author": "Cheney Zhang <277584121@qq.com>"
