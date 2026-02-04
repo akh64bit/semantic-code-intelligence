@@ -206,12 +206,30 @@ export class ToolHandlers {
 
             // Check if already indexed (unless force is true)
             if (!forceReindex && this.snapshotManager.getIndexedCodebases().includes(absolutePath)) {
+                const info = this.snapshotManager.getCodebaseInfo(absolutePath) as any;
+                const lastUpdated = info?.lastUpdated ? new Date(info.lastUpdated).toLocaleString() : 'Unknown';
+                const files = info?.indexedFiles || 0;
+                const chunks = info?.totalChunks || 0;
+
+                const statusMessage = [
+                    `✅ **Codebase Already Indexed**`,
+                    ``,
+                    `The codebase at \`${absolutePath}\` is already up-to-date in the semantic index.`,
+                    ``,
+                    `📊 **Current Index Metadata:**`,
+                    `- 📂 **Files indexed:** ${files}`,
+                    `- 🧩 **Total chunks:** ${chunks}`,
+                    `- 🕒 **Last successful index:** ${lastUpdated}`,
+                    ``,
+                    `💡 **Tip:** If you've made significant changes and want to trigger a manual refresh, use the \`force=true\` parameter.`
+                ].join('\n');
+
                 return {
                     content: [{
                         type: "text",
-                        text: `Codebase '${absolutePath}' is already indexed. Use force=true to re-index.`
+                        text: statusMessage
                     }],
-                    isError: true
+                    isError: false
                 };
             }
 
@@ -288,21 +306,38 @@ export class ToolHandlers {
             this.startBackgroundIndexing(absolutePath, forceReindex, splitterType);
 
             const pathInfo = codebasePath !== absolutePath
-                ? `\nNote: Input path '${codebasePath}' was resolved to absolute path '${absolutePath}'`
+                ? ` (resolved from \`${codebasePath}\`)`
                 : '';
 
-            const extensionInfo = customFileExtensions.length > 0
-                ? `\nUsing ${customFileExtensions.length} custom extensions: ${customFileExtensions.join(', ')}`
-                : '';
+            const extensionPart = customFileExtensions.length > 0
+                ? `- 🧩 **Custom Extensions:** ${customFileExtensions.join(', ')}`
+                : null;
 
-            const ignoreInfo = customIgnorePatterns.length > 0
-                ? `\nUsing ${customIgnorePatterns.length} custom ignore patterns: ${customIgnorePatterns.join(', ')}`
-                : '';
+            const ignorePart = customIgnorePatterns.length > 0
+                ? `- 🚫 **Ignore Patterns:** ${customIgnorePatterns.join(', ')}`
+                : null;
+
+            const messageParts = [
+                `🚀 **Background Indexing Started**`,
+                ``,
+                `Your codebase is now being indexed to enable powerful semantic search.`,
+                ``,
+                `**Configuration:**`,
+                `- 📂 **Path:** \`${absolutePath}\`${pathInfo}`,
+                `- ⚙️ **Splitter:** \`${splitterType.toUpperCase()}\` (Syntax-aware background processing)`,
+                `- ⏳ **Status:** Running in background`,
+                extensionPart,
+                ignorePart,
+                ``,
+                `**Search Availability:**`,
+                `- 🔍 Semantic search is **available immediately**.`,
+                `- ⚠️ Note: Results may be incomplete until the background process finishes.`
+            ].filter(part => part !== null);
 
             return {
                 content: [{
                     type: "text",
-                    text: `Started background indexing for codebase '${absolutePath}' using ${splitterType.toUpperCase()} splitter.${pathInfo}${extensionInfo}${ignoreInfo}\n\nIndexing is running in the background. You can search the codebase while indexing is in progress, but results may be incomplete until indexing completes.`
+                    text: messageParts.join('\n')
                 }]
             };
 
