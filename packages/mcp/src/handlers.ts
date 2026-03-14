@@ -526,7 +526,7 @@ export class ToolHandlers {
                     };
                 }
                 const quoted = cleaned.map((e: string) => `'${e}'`).join(', ');
-                filterExpr = `fileExtension in [${quoted}]`;
+                filterExpr = `fileExtension IN (${quoted})`;
             }
 
             // Search in the specified codebase
