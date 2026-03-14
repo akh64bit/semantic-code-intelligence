@@ -553,6 +553,32 @@ export class ToolHandlers {
                 };
             }
 
+            // Calculate tokens saved
+            let totalFileChars = 0;
+            let totalSnippetChars = 0;
+            const uniqueFiles = new Set<string>();
+
+            for (const result of searchResults) {
+                totalSnippetChars += result.content.length;
+                uniqueFiles.add(result.relativePath);
+            }
+
+            for (const relativePath of uniqueFiles) {
+                try {
+                    const fullPath = path.join(absolutePath, relativePath);
+                    if (fs.existsSync(fullPath)) {
+                        const fileContent = fs.readFileSync(fullPath, 'utf-8');
+                        totalFileChars += fileContent.length;
+                    }
+                } catch (e) {
+                    // Ignore read errors
+                }
+            }
+
+            // Estimate tokens (1 token ≈ 4 characters)
+            const tokensSaved = Math.max(0, Math.ceil((totalFileChars - totalSnippetChars) / 4));
+            const tokensSavedMessage = tokensSaved > 0 ? `\n\n💰 **Tokens Saved**: ~${tokensSaved.toLocaleString()} tokens (by reading snippets instead of full files)` : '';
+
             // Format results
             const formattedResults = searchResults.map((result: any, index: number) => {
                 const location = `${result.relativePath}:${result.startLine}-${result.endLine}`;
@@ -565,7 +591,7 @@ export class ToolHandlers {
                     `   Context: \n\`\`\`${result.language}\n${context}\n\`\`\`\n`;
             }).join('\n');
 
-            let resultMessage = `Found ${searchResults.length} results for query: "${query}" in codebase '${absolutePath}'${indexingStatusMessage}\n\n${formattedResults}`;
+            let resultMessage = `Found ${searchResults.length} results for query: "${query}" in codebase '${absolutePath}'${indexingStatusMessage}${tokensSavedMessage}\n\n${formattedResults}`;
 
             if (isIndexing) {
                 resultMessage += `\n\n💡 **Tip**: This codebase is still being indexed. More results may become available as indexing progresses.`;
