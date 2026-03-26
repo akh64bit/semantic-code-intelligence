@@ -35,6 +35,57 @@ Integrates the core engine with the Model Context Protocol for use with AI agent
   - clear_index: Reset the search index.
   - get_indexing_status: Retrieve current indexing progress.
 
+## Installation
+
+### Recommended: Install as Gemini Extension
+This is the recommended way to use Gemini Code Intel as it automatically configures the MCP server and provides an integrated **Agent Skill**.
+
+#### Direct Installation (Pre-built)
+You can install the extension directly from the repository. The build artifacts (`dist` folders) are included, so you don't need to manually build the TypeScript code. However, **you must still install dependencies** because this extension relies on native system bindings (like `tree-sitter` and `vectordb`).
+
+1. Install the extension using the CLI:
+   ```bash
+   gemini extensions install https://github.com/akh64bit/semantic-code-intelligence
+   ```
+2. Navigate to the installed extension directory (usually `~/.gemini/extensions/semantic-code-intelligence` or similar).
+3. Install the dependencies to fetch the required native binaries for your OS:
+   ```bash
+   pnpm install
+   ```
+
+#### Manual Installation (From Source)
+If you are working from the source code, follow these steps:
+1. **Build the Project**:
+   ```bash
+   pnpm install
+   pnpm build
+   ```
+2. **Link the Extension**:
+   ```bash
+   gemini extensions link .
+   ```
+
+### Usage
+Once installed, the Gemini CLI will automatically have access to the `code-intel` skill. You can interact with it naturally:
+- "Index the current directory"
+- "Search the codebase for the JWT validation logic"
+- "What is the indexing status for /path/to/project?"
+
+## Manual MCP Setup (Optional)
+If you prefer to configure the MCP server manually in your `settings.json`:
+1. Build the project as shown above.
+2. Add the following to your `mcpServers` section:
+```json
+"gemini-code-intel": {
+  "command": "node",
+  "args": ["/path/to/gemini-code-intel/packages/mcp/dist/index.js"],
+  "env": {
+    "GEMINI_API_KEY": "your-api-key",
+    "DB_URI": "~/.gemini-code-intel/db"
+  }
+}
+```
+
 ## Technical Overview
 
 - **Storage**: Uses high-performance, serverless embedded vector storage.

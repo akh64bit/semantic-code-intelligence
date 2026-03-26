@@ -4,7 +4,8 @@ node_modules/
 .pnp.js
 
 # Production builds
-dist/
+# dist/ is commented out to allow committing build artifacts for the extension
+# dist/
 build/
 *.tsbuildinfo
 
