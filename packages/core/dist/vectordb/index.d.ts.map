@@ -1,0 +1,1 @@
+{"version":3,"file":"index.d.ts","sourceRoot":"","sources":["../../src/vectordb/index.ts"],"names":[],"mappings":"AACA,OAAO,EACH,cAAc,EACd,aAAa,EACb,kBAAkB,EAClB,cAAc,EACd,mBAAmB,EACnB,mBAAmB,EACnB,kBAAkB,EAClB,cAAc,EACd,wBAAwB,EAC3B,MAAM,SAAS,CAAC;AAGjB,OAAO,EAAE,mBAAmB,EAAE,mBAAmB,EAAE,MAAM,aAAa,CAAC"}

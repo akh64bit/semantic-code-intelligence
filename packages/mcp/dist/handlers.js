@@ -1,0 +1,744 @@
+import * as fs from "fs";
+import * as path from "path";
+import { COLLECTION_LIMIT_MESSAGE } from "@gemini/gemini-code-intel-core";
+import { ensureAbsolutePath, truncateContent, trackCodebasePath } from "./utils.js";
+export class ToolHandlers {
+    constructor(context, snapshotManager) {
+        this.indexingStats = null;
+        this.context = context;
+        this.snapshotManager = snapshotManager;
+        this.currentWorkspace = process.cwd();
+        console.log(`[WORKSPACE] Current workspace: ${this.currentWorkspace}`);
+    }
+    /**
+     * Sync indexed codebases from LanceDB tables
+     * This method fetches all tables from the vector database,
+     * gets the first document from each table to extract codebasePath from metadata,
+     * and updates the snapshot with discovered codebases.
+     *
+     * Logic: Compare mcp-codebase-snapshot.json with LanceDB tables
+     * - If local snapshot has extra directories (not in database), remove them
+     * - If local snapshot is missing directories (exist in database), ignore them
+     */
+    async syncIndexedCodebases() {
+        try {
+            console.log(`[SYNC] 🔄 Syncing indexed codebases from LanceDB...`);
+            // Get all collections using the interface method
+            const vectorDb = this.context.getVectorDatabase();
+            // Use the listCollections method from the interface
+            const collections = await vectorDb.listCollections();
+            console.log(`[SYNC] 📋 Found ${collections.length} tables in LanceDB`);
+            if (collections.length === 0) {
+                console.log(`[SYNC] ✅ No tables found in database`);
+                // If no collections in database, remove all local codebases
+                const localCodebases = this.snapshotManager.getIndexedCodebases();
+                if (localCodebases.length > 0) {
+                    console.log(`[SYNC] 🧹 Removing ${localCodebases.length} local codebases as database has no tables`);
+                    for (const codebasePath of localCodebases) {
+                        this.snapshotManager.removeIndexedCodebase(codebasePath);
+                        console.log(`[SYNC] ➖ Removed local codebase: ${codebasePath}`);
+                    }
+                    this.snapshotManager.saveCodebaseSnapshot();
+                    console.log(`[SYNC] 💾 Updated snapshot to match empty database state`);
+                }
+                return;
+            }
+            const dbCodebases = new Set();
+            // Check each collection for codebase path
+            for (const collectionName of collections) {
+                try {
+                    // Skip collections that don't match the code_chunks pattern
+                    if (!collectionName.startsWith('code_chunks_') && !collectionName.startsWith('hybrid_code_chunks_')) {
+                        console.log(`[SYNC] ⏭️  Skipping non-code table: ${collectionName}`);
+                        continue;
+                    }
+                    console.log(`[SYNC] 🔍 Checking table: ${collectionName}`);
+                    // Query the first document to get metadata
+                    const results = await vectorDb.query(collectionName, '', // Empty filter to get all results
+                    ['metadata'], // Only fetch metadata field
+                    1 // Only need one result to extract codebasePath
+                    );
+                    if (results && results.length > 0) {
+                        const firstResult = results[0];
+                        const metadataStr = firstResult.metadata;
+                        if (metadataStr) {
+                            try {
+                                const metadata = JSON.parse(metadataStr);
+                                const codebasePath = metadata.codebasePath;
+                                if (codebasePath && typeof codebasePath === 'string') {
+                                    console.log(`[SYNC] 📍 Found codebase path: ${codebasePath} in table: ${collectionName}`);
+                                    dbCodebases.add(codebasePath);
+                                }
+                                else {
+                                    console.warn(`[SYNC] ⚠️  No codebasePath found in metadata for table: ${collectionName}`);
+                                }
+                            }
+                            catch (parseError) {
+                                console.warn(`[SYNC] ⚠️  Failed to parse metadata JSON for table ${collectionName}:`, parseError);
+                            }
+                        }
+                        else {
+                            console.warn(`[SYNC] ⚠️  No metadata found in table: ${collectionName}`);
+                        }
+                    }
+                    else {
+                        console.log(`[SYNC] ℹ️  Table ${collectionName} is empty`);
+                    }
+                }
+                catch (collectionError) {
+                    console.warn(`[SYNC] ⚠️  Error checking table ${collectionName}:`, collectionError.message || collectionError);
+                    // Continue with next collection
+                }
+            }
+            console.log(`[SYNC] 📊 Found ${dbCodebases.size} valid codebases in database`);
+            // Get current local codebases
+            const localCodebases = new Set(this.snapshotManager.getIndexedCodebases());
+            console.log(`[SYNC] 📊 Found ${localCodebases.size} local codebases in snapshot`);
+            let hasChanges = false;
+            // Remove local codebases that don't exist in database
+            for (const localCodebase of localCodebases) {
+                if (!dbCodebases.has(localCodebase)) {
+                    this.snapshotManager.removeIndexedCodebase(localCodebase);
+                    hasChanges = true;
+                    console.log(`[SYNC] ➖ Removed local codebase (not in database): ${localCodebase}`);
+                }
+            }
+            // Note: We don't add database codebases that are missing locally
+            console.log(`[SYNC] ℹ️  Skipping addition of database codebases not present locally (per sync policy)`);
+            if (hasChanges) {
+                this.snapshotManager.saveCodebaseSnapshot();
+                console.log(`[SYNC] 💾 Updated snapshot to match database state`);
+            }
+            else {
+                console.log(`[SYNC] ✅ Local snapshot already matches database state`);
+            }
+            console.log(`[SYNC] ✅ Database sync completed successfully`);
+        }
+        catch (error) {
+            console.error(`[SYNC] ❌ Error syncing codebases from database:`, error.message || error);
+            // Don't throw - this is not critical for the main functionality
+        }
+    }
+    async handleIndexCodebase(args) {
+        const { path: codebasePath, force, splitter, customExtensions, ignorePatterns } = args;
+        const forceReindex = force || false;
+        const splitterType = splitter || 'ast'; // Default to AST
+        const customFileExtensions = customExtensions || [];
+        const customIgnorePatterns = ignorePatterns || [];
+        try {
+            // Sync indexed codebases from database first
+            await this.syncIndexedCodebases();
+            // Validate splitter parameter
+            if (splitterType !== 'ast' && splitterType !== 'langchain') {
+                return {
+                    content: [{
+                            type: "text",
+                            text: `Error: Invalid splitter type '${splitterType}'. Must be 'ast' or 'langchain'.`
+                        }],
+                    isError: true
+                };
+            }
+            // Force absolute path resolution - warn if relative path provided
+            const absolutePath = ensureAbsolutePath(codebasePath);
+            // Validate path exists
+            if (!fs.existsSync(absolutePath)) {
+                return {
+                    content: [{
+                            type: "text",
+                            text: `Error: Path '${absolutePath}' does not exist. Original input: '${codebasePath}'`
+                        }],
+                    isError: true
+                };
+            }
+            // Check if it's a directory
+            const stat = fs.statSync(absolutePath);
+            if (!stat.isDirectory()) {
+                return {
+                    content: [{
+                            type: "text",
+                            text: `Error: Path '${absolutePath}' is not a directory`
+                        }],
+                    isError: true
+                };
+            }
+            // Check if already indexing
+            if (this.snapshotManager.getIndexingCodebases().includes(absolutePath)) {
+                return {
+                    content: [{
+                            type: "text",
+                            text: `Codebase '${absolutePath}' is already being indexed in the background. Please wait for completion.`
+                        }],
+                    isError: true
+                };
+            }
+            //Check if the snapshot and cloud index are in sync
+            if (this.snapshotManager.getIndexedCodebases().includes(absolutePath) !== await this.context.hasIndex(absolutePath)) {
+                console.warn(`[INDEX-VALIDATION] ❌ Snapshot and cloud index mismatch: ${absolutePath}`);
+            }
+            // Check if already indexed (unless force is true)
+            if (!forceReindex && this.snapshotManager.getIndexedCodebases().includes(absolutePath)) {
+                const info = this.snapshotManager.getCodebaseInfo(absolutePath);
+                const lastUpdated = info?.lastUpdated ? new Date(info.lastUpdated).toLocaleString() : 'Unknown';
+                const files = info?.indexedFiles || 0;
+                const chunks = info?.totalChunks || 0;
+                const statusMessage = [
+                    `✅ **Codebase Already Indexed**`,
+                    ``,
+                    `The codebase at \`${absolutePath}\` is already up-to-date in the semantic index.`,
+                    ``,
+                    `📊 **Current Index Metadata:**`,
+                    `- 📂 **Files indexed:** ${files}`,
+                    `- 🧩 **Total chunks:** ${chunks}`,
+                    `- 🕒 **Last successful index:** ${lastUpdated}`,
+                    ``,
+                    `💡 **Tip:** If you've made significant changes and want to trigger a manual refresh, use the \`force=true\` parameter.`
+                ].join('\n');
+                return {
+                    content: [{
+                            type: "text",
+                            text: statusMessage
+                        }],
+                    isError: false
+                };
+            }
+            // If force reindex and codebase is already indexed, remove it
+            if (forceReindex) {
+                if (this.snapshotManager.getIndexedCodebases().includes(absolutePath)) {
+                    console.log(`[FORCE-REINDEX] 🔄 Removing '${absolutePath}' from indexed list for re-indexing`);
+                    this.snapshotManager.removeIndexedCodebase(absolutePath);
+                }
+                if (await this.context.hasIndex(absolutePath)) {
+                    console.log(`[FORCE-REINDEX] 🔄 Clearing index for '${absolutePath}'`);
+                    await this.context.clearIndex(absolutePath);
+                }
+            }
+            // CRITICAL: Pre-index collection creation validation
+            try {
+                console.log(`[INDEX-VALIDATION] 🔍 Validating collection creation capability`);
+                const canCreateCollection = await this.context.getVectorDatabase().checkCollectionLimit();
+                if (!canCreateCollection) {
+                    console.error(`[INDEX-VALIDATION] ❌ Collection limit validation failed: ${absolutePath}`);
+                    // CRITICAL: Immediately return the COLLECTION_LIMIT_MESSAGE to MCP client
+                    return {
+                        content: [{
+                                type: "text",
+                                text: COLLECTION_LIMIT_MESSAGE
+                            }],
+                        isError: true
+                    };
+                }
+                console.log(`[INDEX-VALIDATION] ✅  Collection creation validation completed`);
+            }
+            catch (validationError) {
+                // Handle other collection creation errors
+                console.error(`[INDEX-VALIDATION] ❌ Collection creation validation failed:`, validationError);
+                return {
+                    content: [{
+                            type: "text",
+                            text: `Error validating collection creation: ${validationError.message || validationError}`
+                        }],
+                    isError: true
+                };
+            }
+            // Add custom extensions if provided
+            if (customFileExtensions.length > 0) {
+                console.log(`[CUSTOM-EXTENSIONS] Adding ${customFileExtensions.length} custom extensions: ${customFileExtensions.join(', ')}`);
+                this.context.addCustomExtensions(customFileExtensions);
+            }
+            // Add custom ignore patterns if provided (before loading file-based patterns)
+            if (customIgnorePatterns.length > 0) {
+                console.log(`[IGNORE-PATTERNS] Adding ${customIgnorePatterns.length} custom ignore patterns: ${customIgnorePatterns.join(', ')}`);
+                this.context.addCustomIgnorePatterns(customIgnorePatterns);
+            }
+            // Check current status and log if retrying after failure
+            const currentStatus = this.snapshotManager.getCodebaseStatus(absolutePath);
+            if (currentStatus === 'indexfailed') {
+                const failedInfo = this.snapshotManager.getCodebaseInfo(absolutePath);
+                console.log(`[BACKGROUND-INDEX] Retrying indexing for previously failed codebase. Previous error: ${failedInfo?.errorMessage || 'Unknown error'}`);
+            }
+            // Set to indexing status and save snapshot immediately
+            this.snapshotManager.setCodebaseIndexing(absolutePath, 0);
+            this.snapshotManager.saveCodebaseSnapshot();
+            // Track the codebase path for syncing
+            trackCodebasePath(absolutePath);
+            // Start background indexing - now safe to proceed
+            this.startBackgroundIndexing(absolutePath, forceReindex, splitterType);
+            const pathInfo = codebasePath !== absolutePath
+                ? ` (resolved from \`${codebasePath}\`)`
+                : '';
+            const extensionPart = customFileExtensions.length > 0
+                ? `- 🧩 **Custom Extensions:** ${customFileExtensions.join(', ')}`
+                : null;
+            const ignorePart = customIgnorePatterns.length > 0
+                ? `- 🚫 **Ignore Patterns:** ${customIgnorePatterns.join(', ')}`
+                : null;
+            const messageParts = [
+                `🚀 **Background Indexing Started**`,
+                ``,
+                `Your codebase is now being indexed to enable powerful semantic search.`,
+                ``,
+                `**Configuration:**`,
+                `- 📂 **Path:** \`${absolutePath}\`${pathInfo}`,
+                `- ⚙️ **Splitter:** \`${splitterType.toUpperCase()}\` (Syntax-aware background processing)`,
+                `- ⏳ **Status:** Running in background`,
+                extensionPart,
+                ignorePart,
+                ``,
+                `**Search Availability:**`,
+                `- 🔍 Semantic search is **available immediately**.`,
+                `- ⚠️ Note: Results may be incomplete until the background process finishes.`
+            ].filter(part => part !== null);
+            return {
+                content: [{
+                        type: "text",
+                        text: messageParts.join('\n')
+                    }]
+            };
+        }
+        catch (error) {
+            // Enhanced error handling to prevent MCP service crash
+            console.error('Error in handleIndexCodebase:', error);
+            // Ensure we always return a proper MCP response, never throw
+            return {
+                content: [{
+                        type: "text",
+                        text: `Error starting indexing: ${error.message || error}`
+                    }],
+                isError: true
+            };
+        }
+    }
+    async startBackgroundIndexing(codebasePath, forceReindex, splitterType) {
+        const absolutePath = codebasePath;
+        let lastSaveTime = 0; // Track last save timestamp
+        try {
+            console.log(`[BACKGROUND-INDEX] Starting background indexing for: ${absolutePath}`);
+            // Note: If force reindex, collection was already cleared during validation phase
+            if (forceReindex) {
+                console.log(`[BACKGROUND-INDEX] ℹ️  Force reindex mode - collection was already cleared during validation`);
+            }
+            // Use the existing Context instance for indexing.
+            let contextForThisTask = this.context;
+            if (splitterType !== 'ast') {
+                console.warn(`[BACKGROUND-INDEX] Non-AST splitter '${splitterType}' requested; falling back to AST splitter`);
+            }
+            // Load ignore patterns from files first (including .ignore, .gitignore, etc.)
+            await this.context.getLoadedIgnorePatterns(absolutePath);
+            // Initialize file synchronizer with proper ignore patterns (including project-specific patterns)
+            const { FileSynchronizer } = await import("@gemini/gemini-code-intel-core");
+            const ignorePatterns = this.context.getIgnorePatterns() || [];
+            console.log(`[BACKGROUND-INDEX] Using ignore patterns: ${ignorePatterns.join(', ')}`);
+            const synchronizer = new FileSynchronizer(absolutePath, ignorePatterns);
+            await synchronizer.initialize();
+            // Store synchronizer in the context (let context manage collection names)
+            await this.context.getPreparedCollection(absolutePath);
+            const collectionName = this.context.getCollectionName(absolutePath);
+            this.context.setSynchronizer(collectionName, synchronizer);
+            if (contextForThisTask !== this.context) {
+                contextForThisTask.setSynchronizer(collectionName, synchronizer);
+            }
+            console.log(`[BACKGROUND-INDEX] Starting indexing with ${splitterType} splitter for: ${absolutePath}`);
+            // Log embedding provider information before indexing
+            const embeddingProvider = this.context.getEmbedding();
+            console.log(`[BACKGROUND-INDEX] 🧠 Using embedding provider: ${embeddingProvider.getProvider()} with dimension: ${embeddingProvider.getDimension()}`);
+            // Start indexing with the appropriate context and progress tracking
+            console.log(`[BACKGROUND-INDEX] 🚀 Beginning codebase indexing process...`);
+            const stats = await contextForThisTask.indexCodebase(absolutePath, (progress) => {
+                // Update progress in snapshot manager using new method
+                this.snapshotManager.setCodebaseIndexing(absolutePath, progress.percentage);
+                // Save snapshot periodically (every 2 seconds to avoid too frequent saves)
+                const currentTime = Date.now();
+                if (currentTime - lastSaveTime >= 2000) { // 2 seconds = 2000ms
+                    this.snapshotManager.saveCodebaseSnapshot();
+                    lastSaveTime = currentTime;
+                    console.log(`[BACKGROUND-INDEX] 💾 Saved progress snapshot at ${progress.percentage.toFixed(1)}%`);
+                }
+                console.log(`[BACKGROUND-INDEX] Progress: ${progress.phase} - ${progress.percentage}% (${progress.current}/${progress.total})`);
+            });
+            console.log(`[BACKGROUND-INDEX] ✅ Indexing completed successfully! Files: ${stats.indexedFiles}, Chunks: ${stats.totalChunks}`);
+            // Set codebase to indexed status with complete statistics
+            this.snapshotManager.setCodebaseIndexed(absolutePath, stats);
+            this.indexingStats = { indexedFiles: stats.indexedFiles, totalChunks: stats.totalChunks };
+            // Save snapshot after updating codebase lists
+            this.snapshotManager.saveCodebaseSnapshot();
+            let message = `Background indexing completed for '${absolutePath}' using ${splitterType.toUpperCase()} splitter.\nIndexed ${stats.indexedFiles} files, ${stats.totalChunks} chunks.`;
+            if (stats.status === 'limit_reached') {
+                message += `\n⚠️  Warning: Indexing stopped because the chunk limit (450,000) was reached. The index may be incomplete.`;
+            }
+            console.log(`[BACKGROUND-INDEX] ${message}`);
+        }
+        catch (error) {
+            console.error(`[BACKGROUND-INDEX] Error during indexing for ${absolutePath}:`, error);
+            // Get the last attempted progress
+            const lastProgress = this.snapshotManager.getIndexingProgress(absolutePath);
+            // Set codebase to failed status with error information
+            const errorMessage = error.message || String(error);
+            this.snapshotManager.setCodebaseIndexFailed(absolutePath, errorMessage, lastProgress);
+            this.snapshotManager.saveCodebaseSnapshot();
+            // Log error but don't crash MCP service - indexing errors are handled gracefully
+            console.error(`[BACKGROUND-INDEX] Indexing failed for ${absolutePath}: ${errorMessage}`);
+        }
+    }
+    async handleSearchCode(args) {
+        const { path: codebasePath, query, limit = 10, extensionFilter } = args;
+        const resultLimit = limit || 10;
+        try {
+            // Sync indexed codebases from database first
+            await this.syncIndexedCodebases();
+            // Force absolute path resolution - warn if relative path provided
+            const absolutePath = ensureAbsolutePath(codebasePath);
+            // Validate path exists
+            if (!fs.existsSync(absolutePath)) {
+                return {
+                    content: [{
+                            type: "text",
+                            text: `Error: Path '${absolutePath}' does not exist. Original input: '${codebasePath}'`
+                        }],
+                    isError: true
+                };
+            }
+            // Check if it's a directory
+            const stat = fs.statSync(absolutePath);
+            if (!stat.isDirectory()) {
+                return {
+                    content: [{
+                            type: "text",
+                            text: `Error: Path '${absolutePath}' is not a directory`
+                        }],
+                    isError: true
+                };
+            }
+            trackCodebasePath(absolutePath);
+            // Check if this codebase is indexed or being indexed
+            const isIndexed = this.snapshotManager.getIndexedCodebases().includes(absolutePath);
+            const isIndexing = this.snapshotManager.getIndexingCodebases().includes(absolutePath);
+            if (!isIndexed && !isIndexing) {
+                return {
+                    content: [{
+                            type: "text",
+                            text: `Error: Codebase '${absolutePath}' is not indexed. Please index it first using the index_codebase tool.`
+                        }],
+                    isError: true
+                };
+            }
+            // Show indexing status if codebase is being indexed
+            let indexingStatusMessage = '';
+            if (isIndexing) {
+                indexingStatusMessage = `\n⚠️  **Indexing in Progress**: This codebase is currently being indexed in the background. Search results may be incomplete until indexing completes.`;
+            }
+            console.log(`[SEARCH] Searching in codebase: ${absolutePath}`);
+            console.log(`[SEARCH] Query: "${query}"`);
+            console.log(`[SEARCH] Indexing status: ${isIndexing ? 'In Progress' : 'Completed'}`);
+            // Log embedding provider information before search
+            const embeddingProvider = this.context.getEmbedding();
+            console.log(`[SEARCH] 🧠 Using embedding provider: ${embeddingProvider.getProvider()} for search`);
+            console.log(`[SEARCH] 🔍 Generating embeddings for query using ${embeddingProvider.getProvider()}...`);
+            // Build filter expression from extensionFilter list
+            let filterExpr = undefined;
+            if (Array.isArray(extensionFilter) && extensionFilter.length > 0) {
+                const cleaned = extensionFilter
+                    .filter((v) => typeof v === 'string')
+                    .map((v) => v.trim())
+                    .filter((v) => v.length > 0);
+                const invalid = cleaned.filter((e) => !(e.startsWith('.') && e.length > 1 && !/\s/.test(e)));
+                if (invalid.length > 0) {
+                    return {
+                        content: [{ type: 'text', text: `Error: Invalid file extensions in extensionFilter: ${JSON.stringify(invalid)}. Use proper extensions like '.ts', '.py'.` }],
+                        isError: true
+                    };
+                }
+                const quoted = cleaned.map((e) => `'${e}'`).join(', ');
+                filterExpr = `fileExtension in [${quoted}]`;
+            }
+            // Search in the specified codebase
+            const searchResults = await this.context.semanticSearch(absolutePath, query, Math.min(resultLimit, 50), 0.3, filterExpr);
+            console.log(`[SEARCH] ✅ Search completed! Found ${searchResults.length} results using ${embeddingProvider.getProvider()} embeddings`);
+            if (searchResults.length === 0) {
+                let noResultsMessage = `No results found for query: "${query}" in codebase '${absolutePath}'`;
+                if (isIndexing) {
+                    noResultsMessage += `\n\nNote: This codebase is still being indexed. Try searching again after indexing completes, or the query may not match any indexed content.`;
+                }
+                return {
+                    content: [{
+                            type: "text",
+                            text: noResultsMessage
+                        }]
+                };
+            }
+            // Format results
+            const formattedResults = searchResults.map((result, index) => {
+                const location = `${result.relativePath}:${result.startLine}-${result.endLine}`;
+                const context = truncateContent(result.content, 5000);
+                const codebaseInfo = path.basename(absolutePath);
+                return `${index + 1}. Code snippet (${result.language}) [${codebaseInfo}]\n` +
+                    `   Location: ${location}\n` +
+                    `   Rank: ${index + 1}\n` +
+                    `   Context: \n\`\`\`${result.language}\n${context}\n\`\`\`\n`;
+            }).join('\n');
+            let resultMessage = `Found ${searchResults.length} results for query: "${query}" in codebase '${absolutePath}'${indexingStatusMessage}\n\n${formattedResults}`;
+            if (isIndexing) {
+                resultMessage += `\n\n💡 **Tip**: This codebase is still being indexed. More results may become available as indexing progresses.`;
+            }
+            return {
+                content: [{
+                        type: "text",
+                        text: resultMessage
+                    }]
+            };
+        }
+        catch (error) {
+            // Check if this is the collection limit error
+            // Handle both direct string throws and Error objects containing the message
+            const errorMessage = typeof error === 'string' ? error : (error instanceof Error ? error.message : String(error));
+            if (errorMessage === COLLECTION_LIMIT_MESSAGE || errorMessage.includes(COLLECTION_LIMIT_MESSAGE)) {
+                // Return the collection limit message as a successful response
+                // This ensures LLM treats it as final answer, not as retryable error
+                return {
+                    content: [{
+                            type: "text",
+                            text: COLLECTION_LIMIT_MESSAGE
+                        }]
+                };
+            }
+            return {
+                content: [{
+                        type: "text",
+                        text: `Error searching code: ${errorMessage} Please check if the codebase has been indexed first.`
+                    }],
+                isError: true
+            };
+        }
+    }
+    async handleClearIndex(args) {
+        const { path: codebasePath } = args;
+        if (this.snapshotManager.getIndexedCodebases().length === 0 && this.snapshotManager.getIndexingCodebases().length === 0) {
+            return {
+                content: [{
+                        type: "text",
+                        text: "No codebases are currently indexed or being indexed."
+                    }]
+            };
+        }
+        try {
+            // Force absolute path resolution - warn if relative path provided
+            const absolutePath = ensureAbsolutePath(codebasePath);
+            // Validate path exists
+            if (!fs.existsSync(absolutePath)) {
+                return {
+                    content: [{
+                            type: "text",
+                            text: `Error: Path '${absolutePath}' does not exist. Original input: '${codebasePath}'`
+                        }],
+                    isError: true
+                };
+            }
+            // Check if it's a directory
+            const stat = fs.statSync(absolutePath);
+            if (!stat.isDirectory()) {
+                return {
+                    content: [{
+                            type: "text",
+                            text: `Error: Path '${absolutePath}' is not a directory`
+                        }],
+                    isError: true
+                };
+            }
+            // Check if this codebase is indexed or being indexed
+            const isIndexed = this.snapshotManager.getIndexedCodebases().includes(absolutePath);
+            const isIndexing = this.snapshotManager.getIndexingCodebases().includes(absolutePath);
+            if (!isIndexed && !isIndexing) {
+                return {
+                    content: [{
+                            type: "text",
+                            text: `Error: Codebase '${absolutePath}' is not indexed or being indexed.`
+                        }],
+                    isError: true
+                };
+            }
+            console.log(`[CLEAR] Clearing codebase: ${absolutePath}`);
+            try {
+                await this.context.clearIndex(absolutePath);
+                console.log(`[CLEAR] Successfully cleared index for: ${absolutePath}`);
+            }
+            catch (error) {
+                const errorMsg = `Failed to clear ${absolutePath}: ${error.message}`;
+                console.error(`[CLEAR] ${errorMsg}`);
+                return {
+                    content: [{
+                            type: "text",
+                            text: errorMsg
+                        }],
+                    isError: true
+                };
+            }
+            // Completely remove the cleared codebase from snapshot
+            this.snapshotManager.removeCodebaseCompletely(absolutePath);
+            // Reset indexing stats if this was the active codebase
+            this.indexingStats = null;
+            // Save snapshot after clearing index
+            this.snapshotManager.saveCodebaseSnapshot();
+            let resultText = `Successfully cleared codebase '${absolutePath}'`;
+            const remainingIndexed = this.snapshotManager.getIndexedCodebases().length;
+            const remainingIndexing = this.snapshotManager.getIndexingCodebases().length;
+            if (remainingIndexed > 0 || remainingIndexing > 0) {
+                resultText += `\n${remainingIndexed} other indexed codebase(s) and ${remainingIndexing} indexing codebase(s) remain`;
+            }
+            return {
+                content: [{
+                        type: "text",
+                        text: resultText
+                    }]
+            };
+        }
+        catch (error) {
+            // Check if this is the collection limit error
+            // Handle both direct string throws and Error objects containing the message
+            const errorMessage = typeof error === 'string' ? error : (error instanceof Error ? error.message : String(error));
+            if (errorMessage === COLLECTION_LIMIT_MESSAGE || errorMessage.includes(COLLECTION_LIMIT_MESSAGE)) {
+                // Return the collection limit message as a successful response
+                // This ensures LLM treats it as final answer, not as retryable error
+                return {
+                    content: [{
+                            type: "text",
+                            text: COLLECTION_LIMIT_MESSAGE
+                        }]
+                };
+            }
+            return {
+                content: [{
+                        type: "text",
+                        text: `Error clearing index: ${errorMessage}`
+                    }],
+                isError: true
+            };
+        }
+    }
+    async handleGetIndexingStatus(args) {
+        const { path: codebasePath } = args;
+        try {
+            // Force absolute path resolution
+            const absolutePath = ensureAbsolutePath(codebasePath);
+            // Validate path exists
+            if (!fs.existsSync(absolutePath)) {
+                return {
+                    content: [{
+                            type: "text",
+                            text: `Error: Path '${absolutePath}' does not exist. Original input: '${codebasePath}'`
+                        }],
+                    isError: true
+                };
+            }
+            // Check if it's a directory
+            const stat = fs.statSync(absolutePath);
+            if (!stat.isDirectory()) {
+                return {
+                    content: [{
+                            type: "text",
+                            text: `Error: Path '${absolutePath}' is not a directory`
+                        }],
+                    isError: true
+                };
+            }
+            // Check indexing status using new status system
+            const status = this.snapshotManager.getCodebaseStatus(absolutePath);
+            const info = this.snapshotManager.getCodebaseInfo(absolutePath);
+            let statusMessage = '';
+            switch (status) {
+                case 'indexed':
+                    if (info && 'indexedFiles' in info) {
+                        const indexedInfo = info;
+                        statusMessage = `✅ Codebase '${absolutePath}' is fully indexed and ready for search.\n`;
+                        statusMessage += `\n📊 **Core Statistics**:`;
+                        statusMessage += `\n   • Files: ${indexedInfo.indexedFiles}`;
+                        statusMessage += `\n   • Chunks: ${indexedInfo.totalChunks}`;
+                        statusMessage += `\n   • Status: ${indexedInfo.indexStatus}`;
+                        if (indexedInfo.performance) {
+                            const seconds = (indexedInfo.performance.totalElapsedTimeMs / 1000).toFixed(1);
+                            statusMessage += `\n\n⚡ **Performance**:`;
+                            statusMessage += `\n   • Total indexing time: ${seconds}s`;
+                        }
+                        if (indexedInfo.metadata) {
+                            const meta = indexedInfo.metadata;
+                            statusMessage += `\n\n📂 **Structural Metadata**:`;
+                            statusMessage += `\n   • Total Size: ${meta.totalCharacters.toLocaleString()} characters (~${meta.totalTokens.toLocaleString()} tokens)`;
+                            // Language breakdown (top 5)
+                            const languages = Object.entries(meta.languageBreakdown)
+                                .sort((a, b) => b[1] - a[1])
+                                .slice(0, 5);
+                            statusMessage += `\n   • Languages: ${languages.map(([ext, count]) => `${ext} (${count})`).join(', ')}`;
+                            // Chunking telemetry
+                            statusMessage += `\n\n🧩 **Chunking Telemetry**:`;
+                            statusMessage += `\n   • Average chunk size: ${meta.chunkingTelemetry.averageChunkSize} chars`;
+                            statusMessage += `\n   • Size distribution:`;
+                            for (const [bucket, count] of Object.entries(meta.chunkingTelemetry.chunkSizeDistribution)) {
+                                if (count > 0) {
+                                    statusMessage += `\n     - ${bucket}: ${count} chunks`;
+                                }
+                            }
+                        }
+                        statusMessage += `\n\n🕐 **Last updated**: ${new Date(indexedInfo.lastUpdated).toLocaleString()}`;
+                    }
+                    else {
+                        statusMessage = `✅ Codebase '${absolutePath}' is fully indexed and ready for search.`;
+                    }
+                    break;
+                case 'indexing':
+                    if (info && 'indexingPercentage' in info) {
+                        const indexingInfo = info;
+                        const progressPercentage = indexingInfo.indexingPercentage || 0;
+                        statusMessage = `🔄 Codebase '${absolutePath}' is currently being indexed. Progress: ${progressPercentage.toFixed(1)}%`;
+                        // Add more detailed status based on progress
+                        if (progressPercentage < 10) {
+                            statusMessage += ' (Preparing and scanning files...)';
+                        }
+                        else if (progressPercentage < 100) {
+                            statusMessage += ' (Processing files and generating embeddings...)';
+                        }
+                        statusMessage += `\n🕐 Last updated: ${new Date(indexingInfo.lastUpdated).toLocaleString()}`;
+                    }
+                    else {
+                        statusMessage = `🔄 Codebase '${absolutePath}' is currently being indexed.`;
+                    }
+                    break;
+                case 'indexfailed':
+                    if (info && 'errorMessage' in info) {
+                        const failedInfo = info;
+                        statusMessage = `❌ Codebase '${absolutePath}' indexing failed.`;
+                        statusMessage += `\n🚨 Error: ${failedInfo.errorMessage}`;
+                        if (failedInfo.lastAttemptedPercentage !== undefined) {
+                            statusMessage += `\n📊 Failed at: ${failedInfo.lastAttemptedPercentage.toFixed(1)}% progress`;
+                        }
+                        statusMessage += `\n🕐 Failed at: ${new Date(failedInfo.lastUpdated).toLocaleString()}`;
+                        statusMessage += `\n💡 You can retry indexing by running the index_codebase command again.`;
+                    }
+                    else {
+                        statusMessage = `❌ Codebase '${absolutePath}' indexing failed. You can retry indexing.`;
+                    }
+                    break;
+                case 'not_found':
+                default:
+                    statusMessage = `❌ Codebase '${absolutePath}' is not indexed. Please use the index_codebase tool to index it first.`;
+                    break;
+            }
+            const pathInfo = codebasePath !== absolutePath
+                ? `\nNote: Input path '${codebasePath}' was resolved to absolute path '${absolutePath}'`
+                : '';
+            return {
+                content: [{
+                        type: "text",
+                        text: statusMessage + pathInfo
+                    }]
+            };
+        }
+        catch (error) {
+            return {
+                content: [{
+                        type: "text",
+                        text: `Error getting indexing status: ${error.message || error}`
+                    }],
+                isError: true
+            };
+        }
+    }
+}
+//# sourceMappingURL=handlers.js.map

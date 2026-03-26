@@ -41,10 +41,17 @@ Integrates the core engine with the Model Context Protocol for use with AI agent
 This is the recommended way to use Gemini Code Intel as it automatically configures the MCP server and provides an integrated **Agent Skill**.
 
 #### Direct Installation (Pre-built)
-If you are using a version with pre-built artifacts, you can install directly from the repository:
-```bash
-gemini extensions install https://github.com/akh64bit/semantic-code-intelligence
-```
+You can install the extension directly from the repository. The build artifacts (`dist` folders) are included, so you don't need to manually build the TypeScript code. However, **you must still install dependencies** because this extension relies on native system bindings (like `tree-sitter` and `vectordb`).
+
+1. Install the extension using the CLI:
+   ```bash
+   gemini extensions install https://github.com/akh64bit/semantic-code-intelligence
+   ```
+2. Navigate to the installed extension directory (usually `~/.gemini/extensions/semantic-code-intelligence` or similar).
+3. Install the dependencies to fetch the required native binaries for your OS:
+   ```bash
+   pnpm install
+   ```
 
 #### Manual Installation (From Source)
 If you are working from the source code, follow these steps:
