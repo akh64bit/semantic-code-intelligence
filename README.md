@@ -35,6 +35,44 @@ Integrates the core engine with the Model Context Protocol for use with AI agent
   - clear_index: Reset the search index.
   - get_indexing_status: Retrieve current indexing progress.
 
+## Installation as Gemini Extension
+
+This project is optimized for use as a **Gemini CLI Extension**. This is the recommended way to use Gemini Code Intel as it automatically configures the MCP server and provides an integrated **Agent Skill**.
+
+### 1. Build the Project
+First, ensure you have built the latest version of the core and MCP packages:
+```bash
+pnpm install
+pnpm build
+```
+
+### 2. Link the Extension
+From the root of this repository, run:
+```bash
+gemini extensions link .
+```
+
+### 3. Usage
+Once linked, the Gemini CLI will automatically have access to the `code-intel` skill. You can interact with it naturally:
+- "Index the current directory"
+- "Search the codebase for the JWT validation logic"
+- "What is the indexing status for /path/to/project?"
+
+## Manual MCP Setup (Optional)
+If you prefer to configure the MCP server manually in your `settings.json`:
+1. Build the project as shown above.
+2. Add the following to your `mcpServers` section:
+```json
+"gemini-code-intel": {
+  "command": "node",
+  "args": ["/path/to/gemini-code-intel/packages/mcp/dist/index.js"],
+  "env": {
+    "GEMINI_API_KEY": "your-api-key",
+    "DB_URI": "~/.gemini-code-intel/db"
+  }
+}
+```
+
 ## Technical Overview
 
 - **Storage**: Uses high-performance, serverless embedded vector storage.
