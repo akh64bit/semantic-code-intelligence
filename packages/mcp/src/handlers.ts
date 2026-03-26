@@ -577,7 +577,7 @@ export class ToolHandlers {
 
             // Estimate tokens (1 token ≈ 4 characters)
             const tokensSaved = Math.max(0, Math.ceil((totalFileChars - totalSnippetChars) / 4));
-            const tokensSavedMessage = tokensSaved > 0 ? `\n\n💰 **Tokens Saved**: ~${tokensSaved.toLocaleString()} tokens (by reading snippets instead of full files)` : '';
+            const tokensSavedMessage = tokensSaved > 0 ? `\n\n💰 **Tokens Saved**: ~${tokensSaved.toLocaleString()} tokens ((Semantic Search + existing Grep Search) vs Grep Search only - by reading snippets instead of full files)` : '';
 
             // Format results
             const formattedResults = searchResults.map((result: any, index: number) => {
