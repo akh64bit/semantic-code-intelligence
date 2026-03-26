@@ -35,25 +35,31 @@ Integrates the core engine with the Model Context Protocol for use with AI agent
   - clear_index: Reset the search index.
   - get_indexing_status: Retrieve current indexing progress.
 
-## Installation as Gemini Extension
+## Installation
 
-This project is optimized for use as a **Gemini CLI Extension**. This is the recommended way to use Gemini Code Intel as it automatically configures the MCP server and provides an integrated **Agent Skill**.
+### Recommended: Install as Gemini Extension
+This is the recommended way to use Gemini Code Intel as it automatically configures the MCP server and provides an integrated **Agent Skill**.
 
-### 1. Build the Project
-First, ensure you have built the latest version of the core and MCP packages:
+#### Direct Installation (Pre-built)
+If you are using a version with pre-built artifacts, you can install directly from the repository:
 ```bash
-pnpm install
-pnpm build
+gemini extensions install https://github.com/akh64bit/semantic-code-intelligence
 ```
 
-### 2. Link the Extension
-From the root of this repository, run:
-```bash
-gemini extensions link .
-```
+#### Manual Installation (From Source)
+If you are working from the source code, follow these steps:
+1. **Build the Project**:
+   ```bash
+   pnpm install
+   pnpm build
+   ```
+2. **Link the Extension**:
+   ```bash
+   gemini extensions link .
+   ```
 
-### 3. Usage
-Once linked, the Gemini CLI will automatically have access to the `code-intel` skill. You can interact with it naturally:
+### Usage
+Once installed, the Gemini CLI will automatically have access to the `code-intel` skill. You can interact with it naturally:
 - "Index the current directory"
 - "Search the codebase for the JWT validation logic"
 - "What is the indexing status for /path/to/project?"
