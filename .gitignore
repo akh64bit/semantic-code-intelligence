@@ -68,4 +68,6 @@ evaluation/repos
 repos
 
 evaluation/retrieval_results*
-.venv/gemini-cli.telemetry.json
+.venv/
+gemini-cli.telemetry.json
+
