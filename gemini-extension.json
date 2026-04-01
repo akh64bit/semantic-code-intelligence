@@ -3,12 +3,12 @@
   "version": "0.1.3",
   "description": "Semantic code search and indexing for Gemini CLI",
   "configuration": {
-    "geminiApiKey": {
+    "GEMINI_API_KEY": {
       "type": "string",
       "description": "Google AI API Key for Gemini embeddings",
       "required": true
     },
-    "dbUri": {
+    "DB_URI": {
       "type": "string",
       "description": "Path to the local vector database",
       "default": "~/.gemini-code-intel/db"
@@ -26,4 +26,5 @@
     }
   }
 }
+
 

@@ -308,7 +308,7 @@ main().catch((error) => {
         process.stderr.write('💡 CONFIGURATION ISSUE:\n');
         process.stderr.write('The Gemini API Key is missing. This is required for semantic search.\n\n');
         process.stderr.write('FIX: Run the following command to configure your API key:\n');
-        process.stderr.write('gemini extensions config gemini-code-intel geminiApiKey <YOUR_API_KEY>\n\n');
+        process.stderr.write('gemini extensions config gemini-code-intel GEMINI_API_KEY\n\n');
         process.stderr.write('Alternatively, set the GEMINI_API_KEY environment variable.\n');
     } else if (errorMessage.includes('Cannot find module') || errorMessage.includes('Module not found') || errorMessage.includes('.node')) {
         process.stderr.write('💡 DEPENDENCY ISSUE:\n');

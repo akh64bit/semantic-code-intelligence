@@ -72,7 +72,8 @@ If the extension shows as **Disconnected** 🔴 after installation, it's usually
 #### 1. Configure your API Key
 The MCP server requires a Gemini API key. You can set it using the extension configuration:
 ```bash
-gemini extensions config gemini-code-intel geminiApiKey YOUR_GOOGLE_AI_API_KEY
+# This will prompt you to enter the key
+gemini extensions config gemini-code-intel GEMINI_API_KEY
 ```
 
 #### 2. Install Native Dependencies
