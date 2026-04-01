@@ -65,11 +65,28 @@ If you are working from the source code, follow these steps:
    gemini extensions link .
    ```
 
-### Usage
-Once installed, the Gemini CLI will automatically have access to the `code-intel` skill. You can interact with it naturally:
-- "Index the current directory"
-- "Search the codebase for the JWT validation logic"
-- "What is the indexing status for /path/to/project?"
+### Troubleshooting "Disconnected" Status
+
+If the extension shows as **Disconnected** 🔴 after installation, it's usually due to missing configuration or native dependencies.
+
+#### 1. Configure your API Key
+The MCP server requires a Gemini API key. You can set it using the extension configuration:
+```bash
+gemini extensions config gemini-code-intel geminiApiKey YOUR_GOOGLE_AI_API_KEY
+```
+
+#### 2. Install Native Dependencies
+This extension uses native binaries for high-performance code parsing and vector search. If they weren't installed correctly:
+1. Navigate to the extension directory: `~/.gemini/extensions/gemini-code-intel`
+2. Run `pnpm install`
+3. If using `pnpm`, you may need to allow the build scripts for native modules:
+   ```bash
+   pnpm approve-builds
+   pnpm install
+   ```
+
+#### 3. Check logs
+If it's still disconnected, check the extension logs for detailed error messages.
 
 ## Manual MCP Setup (Optional)
 If you prefer to configure the MCP server manually in your `settings.json`:

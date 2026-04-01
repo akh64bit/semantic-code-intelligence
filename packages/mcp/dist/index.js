@@ -252,7 +252,30 @@ process.on('SIGTERM', () => {
 });
 // Always start the server - this is designed to be the main entry point
 main().catch((error) => {
-    console.error("Fatal error:", error);
+    // Check for common initialization errors to provide better guidance
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    process.stderr.write('\n' + '='.repeat(60) + '\n');
+    process.stderr.write('❌ FATAL ERROR: Gemini Code Intel MCP Server failed to start\n');
+    process.stderr.write('='.repeat(60) + '\n\n');
+    if (errorMessage.includes('GEMINI_API_KEY')) {
+        process.stderr.write('💡 CONFIGURATION ISSUE:\n');
+        process.stderr.write('The Gemini API Key is missing. This is required for semantic search.\n\n');
+        process.stderr.write('FIX: Run the following command to configure your API key:\n');
+        process.stderr.write('gemini extensions config gemini-code-intel geminiApiKey <YOUR_API_KEY>\n\n');
+        process.stderr.write('Alternatively, set the GEMINI_API_KEY environment variable.\n');
+    }
+    else if (errorMessage.includes('Cannot find module') || errorMessage.includes('Module not found') || errorMessage.includes('.node')) {
+        process.stderr.write('💡 DEPENDENCY ISSUE:\n');
+        process.stderr.write('Some dependencies are missing or were not correctly installed.\n');
+        process.stderr.write('This usually happens if native binaries (like tree-sitter or lancedb) were not built.\n\n');
+        process.stderr.write('FIX: Navigate to the extension directory and run:\n');
+        process.stderr.write('pnpm install\n');
+        process.stderr.write('pnpm approve-builds\n');
+    }
+    else {
+        process.stderr.write(`ERROR DETAIL: ${errorMessage}\n`);
+    }
+    process.stderr.write('\n' + '='.repeat(60) + '\n\n');
     process.exit(1);
 });
 //# sourceMappingURL=index.js.map
